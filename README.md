@@ -115,7 +115,7 @@ The minimal JSON format for your data is:
 ```
 In this minimal format, the only thing that needs to be provided is the annotations, each of which references an image and a worker. The `dataset`, `images`, and `workers` values are empty, but they should be present. 
 
-I'll assume that you created this data structure and saved it to a json file. The path to this json file will be referenced as `RAW_DATASET`. To confirm that you have your data in the correct format, you can run the following code snippet to print out stats on the number of images, workers, and annotations:
+I'll assume that you created this data structure and saved it to a json file. The path to this json file will be referenced as `RAW_DATASET`. To confirm that you have your data in the correct format, you can run the following code snippet to print(out stats on the number of images, workers, and annotations:)
 
 ```python
 from collections import Counter
@@ -148,27 +148,27 @@ anno_labels = [anno['anno']['label'] for anno in raw_dataset['annos']]
 num_yes_labels = sum(anno_labels)
 num_no_labels = len(anno_labels) - num_yes_labels
 
-# Print out the stats
-print "%d Images" % (num_images,)
-print "%0.3f average annotations per image" % (avg_num_annos_per_image,)
-print "%d median annotations per image" % (median_num_annos_per_image,)
+# print(out the stats)
+print("%d Images" % (num_images,))
+print("%0.3f average annotations per image" % (avg_num_annos_per_image,))
+print("%d median annotations per image" % (median_num_annos_per_image,))
 print
-print "%d Workers" % (num_workers,)
-print "%0.3f average annotations per worker" % (avg_num_annos_per_worker,)
-print "%d median annotations per worker" % (median_num_annos_per_worker,)
+print("%d Workers" % (num_workers,))
+print("%0.3f average annotations per worker" % (avg_num_annos_per_worker,))
+print("%d median annotations per worker" % (median_num_annos_per_worker,))
 print
-print "%d Annotations" % (num_annotations,)
-print "%d annotations == 1" % (num_yes_labels,)
-print "%d annotations == 0" % (num_no_labels,)
+print("%d Annotations" % (num_annotations,))
+print("%d annotations == 1" % (num_yes_labels,))
+print("%d annotations == 0" % (num_no_labels,))
 
 # Check to see if a worker provided multiple annotations on the same image
 image_id_worker_id_pairs = [(anno['image_id'], anno['worker_id']) for anno in raw_dataset['annos']]
 if len(set(image_id_worker_id_pairs)) != len(image_id_worker_id_pairs):
-  print "\nWARNING: at least one worker labeled an image multiple times. These duplicate annotations should be removed.\n"
+  print("\nWARNING: at least one worker labeled an image multiple times. These duplicate annotations should be removed.\n")
   image_worker_counts = Counter(image_id_worker_id_pairs)
   for ((image_id, worker_id), c) in image_worker_counts.most_common():
     if c > 1:
-      print "Worker %s annotated image %s %d times" % (worker_id, image_id, c)
+      print("Worker %s annotated image %s %d times" % (worker_id, image_id, c))
 ```
 This code snippet also checks to see if you have any duplicate annotations where a single worker labeled a single image multiple times. You should remove these duplicate annotations (perhaps by keeping the most recent annotation) before continuing. 
 
@@ -206,7 +206,7 @@ full_dataset.estimate_parameters(avoid_if_finished=False)
 image_id_to_finished = full_dataset.check_finished_annotations(set_finished=True)
 
 num_finished = sum(image_id_to_finished.values())
-print "%d / %d (%0.2f%%) images are finished" % (num_finished, len(image_id_to_finished), 100. * float(num_finished) / len(image_id_to_finished))
+print("%d / %d (%0.2f%%) images are finished" % (num_finished, len(image_id_to_finished), 100. * float(num_finished) / len(image_id_to_finished)))
 
 # Save the computed binary labels
 full_dataset.save(
@@ -331,7 +331,7 @@ for anno in raw_dataset['annos']:
         anno_id += 1
 
 coco_images = []
-for image_id, image in raw_dataset['images'].iteritems():
+for image_id, image in raw_dataset['images'].items():
     coco_images.append({
         'id' : image_id,
         'url' : image['url'],
@@ -419,7 +419,7 @@ full_dataset.estimate_parameters(avoid_if_finished=False)
 image_id_to_finished = full_dataset.check_finished_annotations(set_finished=True)
 
 num_finished = sum(image_id_to_finished.values())
-print "%d / %d (%0.2f%%) images are finished" % (num_finished, len(image_id_to_finished), 100. * float(num_finished) / len(image_id_to_finished))
+print("%d / %d (%0.2f%%) images are finished" % (num_finished, len(image_id_to_finished), 100. * float(num_finished) / len(image_id_to_finished)))
 
 # Save the computed boxes
 full_dataset.save(
@@ -468,7 +468,7 @@ for label in combined_dataset['combined_labels']:
         anno_id += 1
 
 coco_images = []
-for image_id, image in combined_dataset['images'].iteritems():
+for image_id, image in combined_dataset['images'].items():
     coco_images.append({
         'id' : image_id,
         'url' : image['url'],
@@ -504,8 +504,8 @@ image_ids_and_risk.sort(key=lambda x: x[1])
 image_ids_and_risk.reverse()
 
 risky_image_ids = ",".join([x[0] for x in image_ids_and_risk[:100]])
-print "Risky Image Visualization URL:"
-print "http://localhost:8008/edit_task/?image_ids=%s" % (risky_image_ids,)
+print("Risky Image Visualization URL:")
+print("http://localhost:8008/edit_task/?image_ids=%s" % (risky_image_ids,))
 
 ```
 

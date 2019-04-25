@@ -28,6 +28,7 @@ from collections import OrderedDict
 import datetime
 import json
 import os
+import inspect
 
 import numpy as np
 
@@ -254,7 +255,7 @@ class CrowdDataset(object):
     def crowdsource_simple(self, avoid_if_finished=False):
         """ Set the predicted labels to the consensus median.
         """
-        for image in self.images.itervalues():
+        for image in self.images.values():
             image.crowdsource_simple(avoid_if_finished=avoid_if_finished)
 
     def estimate_priors(self, gt_dataset=None):
@@ -271,16 +272,22 @@ class CrowdDataset(object):
 
     def compute_log_likelihood(self):
         ll = 0
-        for i in self.images:
+        for i in self.images:  # images
             ll += self.images[i].compute_log_likelihood()
-        for w in self.workers:
+        if self.debug > 1:
+            print('image ll: {}'.format(ll))
+        for w in self.workers:  # workers
             ll += self.workers[w].compute_log_likelihood()
+        if self.debug > 1:
+            print('worker ll: {}'.format(ll))
         for i in self.images:
-            for w in self.images[i].z:
+            for w in self.images[i].z:  # labels
                 ll += self.images[i].z[w].compute_log_likelihood()
+        if self.debug > 1:
+            print('label ll: {}'.format(ll))
         return ll
 
-    def estimate_parameters(self, max_iters=10, avoid_if_finished=False):
+    def estimate_parameters(self, max_iters=10, avoid_if_finished=False, **kwargs):
         """Estimate the image labels, and potentially other parameters, for
         this dataset.
         """
@@ -293,8 +300,10 @@ class CrowdDataset(object):
             self.initialize_parameters(avoid_if_finished=avoid_if_finished)
 
             # Get updated image labels
-            for image in self.images.itervalues():
-                image.predict_true_labels(avoid_if_finished=avoid_if_finished)
+            for image in self.images.values():
+                validArgNames = inspect.getargspec(image.predict_true_labels)
+                validKWargs = {key:value for key, value in kwargs.items() if key in validArgNames[0]}
+                image.predict_true_labels(avoid_if_finished=avoid_if_finished, **validKWargs)
 
             # Get CrowdLabels from the computer vision system
             self.get_computer_vision_probabilities()
@@ -309,7 +318,7 @@ class CrowdDataset(object):
         # Maximum likelihood estimation
         log_likelihood = -np.inf
         old_likelihood = -np.inf
-        for it in xrange(max_iters):
+        for it in range(max_iters):
 
             if self.debug > 1:
                 print("Estimate params for " + self.name + ", iter " +
@@ -317,23 +326,25 @@ class CrowdDataset(object):
 
             # Estimate label predictions in each image using worker labels and
             # current worker parameters
-            for image in self.images.itervalues():
-                image.predict_true_labels(avoid_if_finished=avoid_if_finished)
+            for image in self.images.values():
+                validArgNames = inspect.getargspec(image.predict_true_labels)
+                validKWargs = {key:value for key, value in kwargs.items() if key in validArgNames[0]}
+                image.predict_true_labels(avoid_if_finished=avoid_if_finished, **validKWargs)
 
             # Estimate difficulty parameters for each image
             if self.learn_image_params:
-                for image in self.images.itervalues():
+                for image in self.images.values():
                     image.estimate_parameters(
                         avoid_if_finished=avoid_if_finished)
 
             # Estimate skill parameters for each worker
             if self.learn_worker_params:
-                for worker in self.workers.itervalues():
+                for worker in self.workers.values():
                     worker.estimate_parameters(avoid_if_finished=avoid_if_finished)
 
             # Estimate response probability parameters for each worker
-            for image in self.images.itervalues():
-                for label in image.z.itervalues():
+            for image in self.images.values():
+                for label in image.z.values():
                     label.estimate_parameters()
 
             # Check the new log likelihood of the dataset and finish on
@@ -441,7 +452,7 @@ class CrowdDataset(object):
         image is finished.
         """
         finished = {}
-        for image_id, image in self.images.iteritems():
+        for image_id, image in self.images.items():
             finished[image_id] = image.check_finished(
                 set_finished=set_finished)
         return finished
@@ -455,7 +466,7 @@ class CrowdDataset(object):
         """
 
         num = 0
-        for image_id, image in self.images.iteritems():
+        for image_id, image in self.images.items():
 
             if image.z is None:
                 continue
@@ -491,7 +502,7 @@ class CrowdDataset(object):
         """
 
         num = 0
-        for image in self.images.itervalues():
+        for image in self.images.values():
             num += image.num_annotations()
         return num
 
@@ -502,7 +513,7 @@ class CrowdDataset(object):
             return 0
 
         r = 0.
-        for image in self.images.itervalues():
+        for image in self.images.values():
             r += image.risk
         return r / len(self.images)
 
@@ -546,7 +557,7 @@ class CrowdDataset(object):
 
         err = 0.
         num_images = 0
-        for image_id, gt_image in gt_dataset.images.iteritems():
+        for image_id, gt_image in gt_dataset.images.items():
 
             image = self.images[image_id]
 
@@ -586,7 +597,7 @@ class CrowdDataset(object):
             self.fname = fname
             with open(fname) as f:
                 data = json.load(f)
-                
+
         #self.images = {} #NOTE: I don't think we want to reset the images here.
         if overwrite_workers:
             self.workers = {}

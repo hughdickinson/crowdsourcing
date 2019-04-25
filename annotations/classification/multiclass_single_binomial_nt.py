@@ -191,8 +191,8 @@ class CrowdDatasetMulticlass(CrowdDataset):
         prob_trust_num = self.prob_trust_prior_beta * self.prob_trust_prior
         prob_trust_denom = self.prob_trust_prior_beta
 
-        for worker_id, worker in self.workers.iteritems():
-            for image in worker.images.itervalues():
+        for worker_id, worker in self.workers.items():
+            for image in worker.images.values():
 
                 worker_t = image.z.keys().index(worker_id)
                 if worker_t > 0:
@@ -209,7 +209,7 @@ class CrowdDatasetMulticlass(CrowdDataset):
     def initialize_parameters(self, avoid_if_finished=False):
         """Pass on the dataset-wide worker skill priors to the workers.
         """
-        for worker in self.workers.itervalues():
+        for worker in self.workers.values():
             if avoid_if_finished and worker.finished:
                 continue
             worker.prob_correct = self.prob_correct
@@ -270,7 +270,7 @@ class CrowdImageMulticlass(CrowdImage):
 
         ncv = self.params.naive_computer_vision
 
-        num_workers = sum([1 for anno in self.z.itervalues() if not anno.is_computer_vision() or ncv])
+        num_workers = sum([1 for anno in self.z.values() if not anno.is_computer_vision() or ncv])
 
         if self.params.model_worker_trust and num_workers > 1:
 
@@ -278,7 +278,7 @@ class CrowdImageMulticlass(CrowdImage):
             worker_labels = []
             worker_prob_trust = []
             worker_prob_correct = []
-            for anno in self.z.itervalues():
+            for anno in self.z.values():
                 if not anno.is_computer_vision() or ncv:
                     worker_labels.append(anno.label)
                     worker_prob_trust.append(anno.worker.prob_trust)
@@ -304,7 +304,7 @@ class CrowdImageMulticlass(CrowdImage):
             prob_prior_responses[1,:] = np.where(class_labels == pl, pt, ppnt)
 
             # Fill in the subsequent rows for each additional worker
-            for wind in xrange(2, num_workers):
+            for wind in range(2, num_workers):
 
                 pl = worker_labels[wind-1]
                 wl = worker_labels[wind]
@@ -338,7 +338,7 @@ class CrowdImageMulticlass(CrowdImage):
 
             # p(z_j | y, H, w)
             probs = np.empty((num_workers, num_classes))
-            for wind in xrange(num_workers):
+            for wind in range(num_workers):
 
                 wl = worker_labels[wind]
                 pc = worker_prob_correct[wind]
@@ -371,7 +371,7 @@ class CrowdImageMulticlass(CrowdImage):
             ll_to_sum[:,0] = log_class_probs
 
             worker_index = 1
-            for anno in self.z.itervalues():
+            for anno in self.z.values():
                 if not anno.is_computer_vision() or ncv:
 
                     wl = anno.label
@@ -394,26 +394,26 @@ class CrowdImageMulticlass(CrowdImage):
         lls = lls[y_labels]
 
         # if self.id == '4515275':
-        #     print y_labels[:10]
-        #     print lls[:10]
+        #     print(y_labels[:10])
+        #     print(lls[:10])
 
-        #     print log_class_probs[y_labels][:2]
-        #     print lprobs[y_labels][:2]
-
-        #     print
-        #     print np.log(probs).sum(axis=0)[y_labels][:2]
-        #     print np.log(prob_prior_responses).sum(axis=0)[y_labels][:2]
-        #     print
+        #     print(log_class_probs[y_labels][:2])
+        #     print(lprobs[y_labels][:2])
 
         #     print
-        #     print np.log(probs)[:,y_labels][:,:2]
-        #     print np.log(prob_prior_responses)[:,y_labels][:,:2]
+        #     print(np.log(probs).sum(axis=0)[y_labels][:2])
+        #     print(np.log(prob_prior_responses).sum(axis=0)[y_labels][:2])
         #     print
 
-        #     print num_workers
-        #     print worker_labels
-        #     print worker_prob_correct
-        #     print worker_prob_trust
+        #     print
+        #     print(np.log(probs)[:,y_labels][:,:2])
+        #     print(np.log(prob_prior_responses)[:,y_labels][:,:2])
+        #     print
+
+        #     print(num_workers)
+        #     print(worker_labels)
+        #     print(worker_prob_correct)
+        #     print(worker_prob_trust)
 
 
         pred_y = y_labels[0]
@@ -491,7 +491,7 @@ class CrowdWorkerMulticlass(CrowdWorker):
         # Estimate our probability of being correct by looking at our agreement with predicted labels
         num_correct = self.params.prob_correct_beta * self.params.prob_correct
         num_total = self.params.prob_correct_beta
-        for image in self.images.itervalues():
+        for image in self.images.values():
 
             if len(image.z) <= 1:
                 continue
@@ -512,7 +512,7 @@ class CrowdWorkerMulticlass(CrowdWorker):
             prob_trust_num = self.params.prob_trust_beta * self.params.prob_trust
             prob_trust_denom = self.params.prob_trust_beta
 
-            for image in self.images.itervalues():
+            for image in self.images.values():
 
                 # We are only dependent on the annotation immediately before us.
                 our_t = image.z.keys().index(self.id)

@@ -167,7 +167,7 @@ class CrowdDatasetBinaryClassification(CrowdDataset):
                 continue
 
             # If we have access to a ground truth dataset, then use the label from there.
-            if not gt_dataset is None:
+            if gt_dataset is not None:
                 y = gt_dataset.images[i].y.label
             # Otherwise, grab the current prediction for the image
             else:
@@ -280,7 +280,7 @@ class CrowdImageBinaryClassification(CrowdImage):
         # compute the likelihood of (Z | y, W)
         for w in self.z:
             if not self.z[w].is_computer_vision() or self.params.naive_computer_vision:
-
+                # On first iteration all workers have global "prior" skills.
                 if self.z[w].label == 1:
                     ll_present += math.log(self.z[w].worker.prob_present_given_present)
                     ll_not_present += math.log(1 - self.z[w].worker.prob_not_present_given_not_present)
@@ -328,8 +328,8 @@ class CrowdImageBinaryClassification(CrowdImage):
             ll = (1 - y) * math.log(1 - self.cv_pred.prob) + y * math.log(self.cv_pred.prob)
 
         else:
-            # NOTE: is it `1 - self.params.prob_correct` for both cases?
-            ll = (1 - y) * math.log(1 - self.params.prob_present) + y * math.log(1 - self.params.prob_present)
+            # NOTE: is it `1 - self.params.prob_correct` for both cases? HJDEdit: No, I think not.
+            ll = (1 - y) * math.log(1 - self.params.prob_present) + y * math.log(self.params.prob_present)
 
         return ll
 
@@ -423,7 +423,7 @@ class CrowdWorkerBinaryClassification(CrowdWorker):
         #   # Use the global prior for class presence
         #   beta = self.params.prob_present_beta
         #   prob_present = self.prob_present # assigned by CrowdDatasetBinaryClassification in `initialize_parameters()`
-        beta = 0
+        beta = 0 # FIXME: HJD eh?
         prob_present = 0.5
 
         # Predict our probability of labeling 1 when the gt is 1
@@ -466,6 +466,7 @@ class CrowdLabelBinaryClassification(CrowdLabel):
                 math.log(1 - self.worker.prob_present_given_present) * y * (1 - z) + math.log(1 - self.worker.prob_not_present_given_not_present) * (1 - y) * z)
 
     def loss(self, y):
+        # Loss is zero for matching labels and 1 for mismatching labels.
         return abs(self.label - y.label)
 
     def parse(self, data):

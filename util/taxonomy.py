@@ -80,7 +80,7 @@ class Node(object):
         """ jsonify our data, specifically handling numpy arrays.
         """
         json_data = {}
-        for key, value in self.data.iteritems():
+        for key, value in self.data.items():
             if isinstance(value, np.ndarray):
                 value = value.tolist()
             json_data[key] = value
@@ -251,7 +251,7 @@ class Taxonomy(object):
         return node_data
 
     def stats(self):
-        """ Print some stats about the taxonomy.
+        """ print(some stats about the taxonomy.)
         """
         if not self.finalized:
             raise ValueError("Finalize the taxonomy first.")
