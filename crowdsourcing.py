@@ -703,6 +703,8 @@ class CrowdDataset(object):
                         'image_id': i,
                         'label': self.images[i].y.encode()
                     })
+        if fname is None:
+            return data
         with open(fname, 'w') as f:
             json.dump(data, f)
 
