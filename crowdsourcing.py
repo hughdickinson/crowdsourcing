@@ -340,7 +340,7 @@ class CrowdDataset(object):
             # Estimate skill parameters for each worker
             if self.learn_worker_params:
                 for worker in self.workers.values():
-                    worker.estimate_parameters(avoid_if_finished=avoid_if_finished)
+                    worker.estimate_parameters(avoid_if_finished=avoid_if_finished,new_iter=not bool(it))   ### VM-edit; added new_iter
 
             # Estimate response probability parameters for each worker
             for image in self.images.values():

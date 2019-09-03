@@ -633,6 +633,9 @@ class CrowdWorkerBBox(CrowdWorker):
         self.prob_fp = None  # probability that a box annotated by this worker will be a false positive
         self.prob_fn = None  # probability that a ground truth box will be missed by this worker
         self.finished = False
+        self.sigma_array = []   ### VM-edit
+        self.prob_fp_array = [] ### VM-edit
+        self.prob_fn_array = [] ### VM-edit
 
     def compute_log_likelihood(self):
         # Beta prior for worker false positive parameter
@@ -648,7 +651,7 @@ class CrowdWorkerBBox(CrowdWorker):
 
         return ll
 
-    def estimate_parameters(self, avoid_if_finished=False):
+    def estimate_parameters(self, avoid_if_finished=False,new_iter=True):       ### VM-edit; added new_iter
 
         if avoid_if_finished and self.finished:
             return
@@ -659,7 +662,7 @@ class CrowdWorkerBBox(CrowdWorker):
         num_p = self.params.prob_fp_beta
         num_fn = self.params.prob_fn * self.params.prob_fn_beta
         num_tp = self.params.prob_fn_beta
-        for i in self.images:
+        for _idx,i in enumerate(self.images):
             w = (len(self.images[i].z) - 1) / float(len(self.images[i].z))
             z = self.images[i].z[self.id]
             matches = [0] * len(self.images[i].y.bboxes)
@@ -673,6 +676,15 @@ class CrowdWorkerBBox(CrowdWorker):
                 if matches[j] == 0:
                     num_fn += w
             num_tp += w * len(self.images[i].y.bboxes)
+            if new_iter:                                            ### VM-edit
+                self.prob_fp_array.append(float(num_fp) / num_p)    ### VM-edit
+                self.prob_fn_array.append(float(num_fn) / num_tp)   ### VM-edit
+            else:                                                   ### VM-edit
+                self.prob_fp_array[_idx-len(self.images)-1] = float(num_fp) / num_p    ### VM-edit
+                self.prob_fn_array[_idx-len(self.images)-1] = float(num_fn) / num_tp   ### VM-edit
+        if new_iter:                                            ### VM-edit
+            self.prob_fp_array.append(-99)                      ### VM-edit
+            self.prob_fn_array.append(-99)                      ### VM-edit
         self.prob_fp = float(num_fp) / num_p  # probability a given worker box is a false positive
         self.prob_fn = float(num_fn) / num_tp  # probability a worker will miss a particular box in the ground truth label
 
@@ -680,14 +692,28 @@ class CrowdWorkerBBox(CrowdWorker):
         # and use that to compute worker sigma
         S = self.params.prior_sigma_v0 * (self.params.prior_sigma**2)
         num = self.params.prior_sigma_v0  # + 2
-        for i in self.images:
+        for _idx,i in enumerate(self.images):
             z = self.images[i].z[self.id]
             for b in z.bboxes:
                 if not b.a is None:
                     S += (b.dist2(self.images[i].y.bboxes[b.a]) + self.images[i].y.bboxes[b.a].est_var)  # *b.w
                     num += 1  # b.w
+            if new_iter:                                            ### VM-edit
+                self.sigma_array.append(math.sqrt(S / num))         ### VM-edit
+            else:                                                   ### VM-edit
+                self.sigma_array[_idx-len(self.images)-1] = math.sqrt(S / num)    ### VM-edit
+        if new_iter: self.sigma_array.append(-99)                   ### VM-edit
         self.sigma = math.sqrt(S / num)
         self.skill = [self.prob_fp, self.sigma, self.prob_fn]
+
+        ### Debug purposes -- VM-edit ###
+        # if self.id=='1785497':
+        #     print("\n{:s}\n".format("".join(["-"]*20)))
+        #     print("n_images {:}".format(len(self.images)))
+        #     print("sigma {:}".format(self.sigma_array))
+        #     print("prob_fp {:}".format(self.prob_fp_array))
+        #     print("prob_fn {:}".format(self.prob_fn_array))
+        #     print("\n{:s}\n".format("".join(["-"]*20)))
 
 
 class CrowdLabelBBox(CrowdLabel):
