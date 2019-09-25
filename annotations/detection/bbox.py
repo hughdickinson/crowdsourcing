@@ -265,7 +265,7 @@ class CrowdImageBBox(CrowdImage):
     def __init__(self, id, params):
         super(CrowdImageBBox, self).__init__(id, params)
         self.risk, self.e_fn, self.e_fp, self.e_boundaries_off = None, None, None, None
-        self.num_possible_bbox_locs = 10.0
+        self.num_possible_bbox_locs = 50.0
         self.encode_exclude['fc_cache'] = True
 
     def crowdsource_simple(self, avoid_if_finished=False):
