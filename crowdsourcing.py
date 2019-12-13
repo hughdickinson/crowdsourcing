@@ -32,6 +32,7 @@ import inspect
 
 import numpy as np
 
+
 class CrowdImage(object):
     """ An image to be annotated.
     """
@@ -39,20 +40,20 @@ class CrowdImage(object):
     def __init__(self, id_, params):
         self.id = id_
         self.params = params
-        self.y = None      # Predicted label
-        self.x = None      # Image for computer vision
-        self.z = OrderedDict() # Worker id to CrowdLabel
-        self.d = None      # difficulty parameters
+        self.y = None  # Predicted label
+        self.x = None  # Image for computer vision
+        self.z = OrderedDict()  # Worker id to CrowdLabel
+        self.d = None  # difficulty parameters
         self.finished = False
         self.workers = []  # list of worker ids
         self.cv_pred = None
         self.encode_exclude = {
-            'y': True,
-            'y_gt': True,
-            'z': True,
-            'cv_pred': True,
-            'params': True,
-            'encode_exclude': True
+            "y": True,
+            "y_gt": True,
+            "z": True,
+            "cv_pred": True,
+            "params": True,
+            "encode_exclude": True,
         }
 
         # Set when computing the error in `CrowdDataset.compute_error()`
@@ -64,22 +65,22 @@ class CrowdImage(object):
         self.fname = None
 
     def crowdsource_simple(self, avoid_if_finished=False):
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         return
 
     def compute_log_likelihood(self):
         return 0
 
     def predict_true_labels(self, avoid_if_finished=False):
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         return
 
     def estimate_parameters(self, avoid_if_finished=False):
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         return
 
     def check_finished(self, set_finished=True):
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         return
 
     def filename(self):
@@ -107,10 +108,10 @@ class CrowdImage(object):
         return data
 
     def copy_parameters_from(self, image, full=True):
-        #pylint: disable=unused-argument
-        if hasattr(image, 'url'):
+        # pylint: disable=unused-argument
+        if hasattr(image, "url"):
             self.url = image.url
-        if hasattr(image, 'fname'):
+        if hasattr(image, "fname"):
             self.fname = image.fname
 
 
@@ -124,11 +125,7 @@ class CrowdWorker(object):
         # set of images annotated by this worker, image id to CrowdImage
         self.images = {}
         self.finished = False
-        self.encode_exclude = {
-            'images': True,
-            'params': True,
-            'encode_exclude': True
-        }
+        self.encode_exclude = {"images": True, "params": True, "encode_exclude": True}
 
         # set in `CrowdDataset.get_computer_vision_probabilities()`
         self.is_computer_vision = False
@@ -137,7 +134,7 @@ class CrowdWorker(object):
         return 0
 
     def estimate_parameters(self, avoid_if_finished=False):
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         return 0
 
     def parse(self, data):
@@ -152,7 +149,7 @@ class CrowdWorker(object):
         return data
 
     def copy_parameters_from(self, worker, full=True):
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         return
 
 
@@ -164,16 +161,15 @@ class CrowdLabel(object):
         self.image = image  # CrowdImage
         self.worker = worker  # CrowdWorker
         self.encode_exclude = {
-            'worker': True,
-            'image': True,
-            'encode_exclude': True,
-            'raw_data': True
+            "worker": True,
+            "image": True,
+            "encode_exclude": True,
+            "raw_data": True,
         }
 
         # Is this a computer vision annotation?
         # TODO: refactor to a property
-        self._is_computer_vision = (self.worker and
-                                    self.worker.is_computer_vision)
+        self._is_computer_vision = self.worker and self.worker.is_computer_vision
 
         # Assigned in `parse`
         self.raw_data = None
@@ -182,13 +178,17 @@ class CrowdLabel(object):
         return 0
 
     def loss(self, y):
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         return 1
 
     def copy_into(self, into):
         for attr in dir(self):
-            if (not callable(attr) and not attr.startswith("__") and
-                    attr != "image" and attr != "worker"):
+            if (
+                not callable(attr)
+                and not attr.startswith("__")
+                and attr != "image"
+                and attr != "worker"
+            ):
                 setattr(into, attr, getattr(self, attr))
 
     def estimate_parameters(self):
@@ -216,11 +216,19 @@ class CrowdDataset(object):
     """ A dataset, holding images, workers and labels.
     """
 
-    def __init__(self, debug=0, min_risk=0.005, learn_worker_params=True,
-                 learn_image_params=True, estimate_priors_automatically=False,
-                 computer_vision_predictor=None, naive_computer_vision=False,
-                 add_computer_vision_to_workers=True, image_dir=None,
-                 name=""):
+    def __init__(
+        self,
+        debug=0,
+        min_risk=0.005,
+        learn_worker_params=True,
+        learn_image_params=True,
+        estimate_priors_automatically=False,
+        computer_vision_predictor=None,
+        naive_computer_vision=False,
+        add_computer_vision_to_workers=True,
+        image_dir=None,
+        name="",
+    ):
 
         self.debug = debug
         self.name = name
@@ -232,14 +240,14 @@ class CrowdDataset(object):
         self.estimate_priors_automatically = estimate_priors_automatically
         self.finished = False
         self.encode_exclude = {
-            'workers': True,
-            'images': True,
-            'cv_worker': True,
-            '_CrowdImageClass_': True,
-            '_CrowdWorkerClass_': True,
-            '_CrowdLabelClass_': True,
-            'computer_vision_predictor': True,
-            'encode_exclude': True
+            "workers": True,
+            "images": True,
+            "cv_worker": True,
+            "_CrowdImageClass_": True,
+            "_CrowdWorkerClass_": True,
+            "_CrowdLabelClass_": True,
+            "computer_vision_predictor": True,
+            "encode_exclude": True,
         }
         self.naive_computer_vision = naive_computer_vision
         self.cv_iter = 0
@@ -261,13 +269,13 @@ class CrowdDataset(object):
     def estimate_priors(self, gt_dataset=None):
         """ Estimate priors globally over the whole dataset.
         """
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         return
 
     def initialize_parameters(self, avoid_if_finished=False):
         """ Initialize the parameters of the CrowdWorkers and the CrowdImages.
         """
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         return
 
     def compute_log_likelihood(self):
@@ -275,16 +283,16 @@ class CrowdDataset(object):
         for i in self.images:  # images
             ll += self.images[i].compute_log_likelihood()
         if self.debug > 1:
-            print('image ll: {}'.format(ll))
+            print("image ll: {}".format(ll))
         for w in self.workers:  # workers
             ll += self.workers[w].compute_log_likelihood()
         if self.debug > 1:
-            print('worker ll: {}'.format(ll))
+            print("worker ll: {}".format(ll))
         for i in self.images:
             for w in self.images[i].z:  # labels
                 ll += self.images[i].z[w].compute_log_likelihood()
         if self.debug > 1:
-            print('label ll: {}'.format(ll))
+            print("label ll: {}".format(ll))
         return ll
 
     def estimate_parameters(self, max_iters=10, avoid_if_finished=False, **kwargs):
@@ -302,8 +310,14 @@ class CrowdDataset(object):
             # Get updated image labels
             for image in self.images.values():
                 validArgNames = inspect.getargspec(image.predict_true_labels)
-                validKWargs = {key:value for key, value in kwargs.items() if key in validArgNames[0]}
-                image.predict_true_labels(avoid_if_finished=avoid_if_finished, **validKWargs)
+                validKWargs = {
+                    key: value
+                    for key, value in kwargs.items()
+                    if key in validArgNames[0]
+                }
+                image.predict_true_labels(
+                    avoid_if_finished=avoid_if_finished, **validKWargs
+                )
 
             # Get CrowdLabels from the computer vision system
             self.get_computer_vision_probabilities()
@@ -319,29 +333,64 @@ class CrowdDataset(object):
         log_likelihood = -np.inf
         old_likelihood = -np.inf
         for it in range(max_iters):
+            print("Starting iteration {} of {} ...".format(it, max_iters))
 
             if self.debug > 1:
-                print("Estimate params for " + self.name + ", iter " +
-                      str(it + 1) + " likelihood=" + str(log_likelihood))
+                print(
+                    "Estimate params for "
+                    + self.name
+                    + ", iter "
+                    + str(it + 1)
+                    + " likelihood="
+                    + str(log_likelihood)
+                )
 
             # Estimate label predictions in each image using worker labels and
             # current worker parameters
             for image in self.images.values():
                 validArgNames = inspect.getargspec(image.predict_true_labels)
-                validKWargs = {key:value for key, value in kwargs.items() if key in validArgNames[0]}
-                image.predict_true_labels(avoid_if_finished=avoid_if_finished, **validKWargs)
+                validKWargs = {
+                    key: value
+                    for key, value in kwargs.items()
+                    if key in validArgNames[0]
+                }
+                image.predict_true_labels(
+                    avoid_if_finished=avoid_if_finished, **validKWargs
+                )
 
             # Estimate difficulty parameters for each image
             if self.learn_image_params:
                 for image in self.images.values():
-                    image.estimate_parameters(
-                        avoid_if_finished=avoid_if_finished)
+                    image.estimate_parameters(avoid_if_finished=avoid_if_finished)
 
             # Estimate skill parameters for each worker
+            workerSuppressed = False
             if self.learn_worker_params:
                 for worker in self.workers.values():
-                    worker.estimate_parameters(avoid_if_finished=avoid_if_finished,new_iter=not bool(it))   ### VM-edit; added new_iter
-
+                    workerSuppressed, workerId = worker.estimate_parameters(
+                        avoid_if_finished=avoid_if_finished, new_iter=True
+                    )  ### VM-edit; added new_iter
+                    if workerSuppressed:
+                        break
+            if workerSuppressed:
+                print(
+                    "A worker was suppressed. Aborting this iteration. {} of {}.".format(
+                        it, max_iters
+                    )
+                )
+                for image in self.images.values():
+                    # print(workerId, image.z)
+                    if workerId in image.z:
+                        # Remove any bounding boxes supplied by the suppressed
+                        # worker for this image.
+                        print("Removing {} from {}".format(workerId, image.id))
+                        image.z[workerId].bboxes = []
+                        # Suppress this worker's annotation for this image in
+                        # perpetuity.
+                        # Note that worker suppression is removed on the next
+                        # batch and this image will be reconsidered.
+                        image.suppressed_workers.add(workerId)
+                continue
             # Estimate response probability parameters for each worker
             for image in self.images.values():
                 for label in image.z.values():
@@ -358,7 +407,7 @@ class CrowdDataset(object):
 
         return log_likelihood
 
-    def get_computer_vision_probabilities(self, method='at_least_one_worker'):
+    def get_computer_vision_probabilities(self, method="at_least_one_worker"):
         """ Get updated computer vision probabilities for all images in the
         dataset. This will retrain the computer vision system, and then extract
         CrowdLabels.
@@ -369,25 +418,25 @@ class CrowdDataset(object):
         labels = [self.images[image_id].y for image_id in image_ids]
 
         # Specify the images that can be used for training
-        if method == 'at_least_one_worker':
+        if method == "at_least_one_worker":
             valid_train = []
             has_cv = self.cv_worker != None
             for image_id in image_ids:
-                has_cv_anno = int(has_cv and
-                                  self.cv_worker.id in self.images[image_id].z)
+                has_cv_anno = int(
+                    has_cv and self.cv_worker.id in self.images[image_id].z
+                )
                 num_annos = len(self.images[image_id].z)
                 if num_annos - has_cv_anno > 0:
                     valid_train.append(True)
                 else:
                     valid_train.append(False)
 
-        elif method == 'is_finished':
-            valid_train = [
-                self.images[image_id].finished for image_id in image_ids]
+        elif method == "is_finished":
+            valid_train = [self.images[image_id].finished for image_id in image_ids]
 
         # Create a new crowd worker and mark them as computer vision
         prev_cv_worker = self.cv_worker
-        cv_worker_id = 'computer_vision_iter' + str(self.cv_iter)
+        cv_worker_id = "computer_vision_iter" + str(self.cv_iter)
         self.cv_worker = self._CrowdWorkerClass_(cv_worker_id, params=self)
         self.cv_worker.is_computer_vision = True
         self.cv_iter += 1
@@ -397,9 +446,9 @@ class CrowdDataset(object):
             images=images,
             labels=labels,
             valid_train=valid_train,
-            cache_name=self.fname + '.computer_vision_cache',
+            cache_name=self.fname + ".computer_vision_cache",
             cv_worker=self.cv_worker,
-            naive=self.naive_computer_vision
+            naive=self.naive_computer_vision,
         )
 
         cv_preds_dict = {label.image.id: label for label in cv_preds}
@@ -423,14 +472,12 @@ class CrowdDataset(object):
             for image_id in image_ids:
 
                 # Delete the previous computer vision CrowdLabel
-                if (prev_cv_worker and
-                        prev_cv_worker.id in self.images[image_id].z):
+                if prev_cv_worker and prev_cv_worker.id in self.images[image_id].z:
                     del self.images[image_id].z[prev_cv_worker.id]
 
                 # Put the new computer vision CrowdLabel in the image's label
                 #  dict
-                self.images[image_id].z[self.cv_worker.id] = \
-                  cv_preds_dict[image_id]
+                self.images[image_id].z[self.cv_worker.id] = cv_preds_dict[image_id]
 
                 # Find the index of the previous computer vision CrowdWorker
                 # and replace it with the new computer vision CrowdWorker.
@@ -440,8 +487,7 @@ class CrowdDataset(object):
                         worker_ind = j
                         break
                 if worker_ind >= 0:
-                    self.images[image_id].workers[worker_ind] = \
-                      self.cv_worker.id
+                    self.images[image_id].workers[worker_ind] = self.cv_worker.id
                 else:
                     self.images[image_id].workers.append(self.cv_worker.id)
 
@@ -453,11 +499,10 @@ class CrowdDataset(object):
         """
         finished = {}
         for image_id, image in self.images.items():
-            finished[image_id] = image.check_finished(
-                set_finished=set_finished)
+            finished[image_id] = image.check_finished(set_finished=set_finished)
         return finished
 
-    def num_unfinished(self, max_annos=float('Inf'), full_dataset=None):
+    def num_unfinished(self, max_annos=float("Inf"), full_dataset=None):
         """ Return the number of unfinished images.
         "Finished" is either:
           The image is marked as finished.
@@ -479,15 +524,16 @@ class CrowdDataset(object):
                 has_cv = 1
 
             fd_has_cv = 0
-            if (full_dataset and full_dataset.cv_worker and
-                    full_dataset.cv_worker.id in
-                    full_dataset.images[image_id].z):
+            if (
+                full_dataset
+                and full_dataset.cv_worker
+                and full_dataset.cv_worker.id in full_dataset.images[image_id].z
+            ):
                 fd_has_cv = 1
 
             num_annos_available = max_annos
             if full_dataset is not None:
-                num_non_cv_annos = len(
-                    full_dataset.images[image_id].z) - fd_has_cv
+                num_non_cv_annos = len(full_dataset.images[image_id].z) - fd_has_cv
                 num_annos_available = min(max_annos, num_non_cv_annos)
 
             num_current_annos = len(image.z) - has_cv
@@ -512,35 +558,37 @@ class CrowdDataset(object):
         if len(self.images) == 0:
             return 0
 
-        r = 0.
+        r = 0.0
         for image in self.images.values():
             r += image.risk
         return r / len(self.images)
 
-    def choose_images_to_annotate_next(self, sort_method="num_annos",
-                                       full_dataset=None):
+    def choose_images_to_annotate_next(
+        self, sort_method="num_annos", full_dataset=None
+    ):
         """Return a list of image ids that should be annotated next.
         """
 
         if sort_method == "num_annos":
             queue = sorted(self.images.items(), key=lambda x: len(x[1].z))
         elif sort_method == "risk":
+
             def risk_func(image):
                 if hasattr(image, "risk"):
                     return -image.risk
                 else:
                     return len(image.z)
-            queue = sorted(self.images.items(),
-                           key=lambda x: risk_func(x[1]))
+
+            queue = sorted(self.images.items(), key=lambda x: risk_func(x[1]))
         elif sort_method == "normalized_risk":
+
             def norm_risk_func(image):
                 if len(image.z) > 0 and hasattr(image, "risk"):
                     return -image.risk / len(image.z)
                 else:
                     return len(image.z)
-            queue = sorted(self.images.items(),
-                           key=lambda x: norm_risk_func(x[1])
-                          )
+
+            queue = sorted(self.images.items(), key=lambda x: norm_risk_func(x[1]))
         else:
             queue = full_dataset.images.items()
 
@@ -555,14 +603,14 @@ class CrowdDataset(object):
         """Get the average error compared to a ground truth dataset.
         """
 
-        err = 0.
+        err = 0.0
         num_images = 0
         for image_id, gt_image in gt_dataset.images.items():
 
             image = self.images[image_id]
 
             # Get the ground truth label
-            if hasattr(gt_image, 'y_gt') and gt_image.y_gt is not None:
+            if hasattr(gt_image, "y_gt") and gt_image.y_gt is not None:
                 y_gt = gt_image.y_gt
             else:
                 y_gt = gt_image.y
@@ -574,14 +622,25 @@ class CrowdDataset(object):
                 num_images += 1
 
         if num_images == 0:
-            return 0.
+            return 0.0
 
         return err / float(num_images)
 
-    def load(self, fname=None, data=None, max_assignments=None, sort_annos=False,
-             overwrite_workers=True, load_dataset=True, load_workers=True,
-             load_images=True, load_annos=True, load_gt_annos=True,
-             load_combined_labels=True):
+    def load(
+        self,
+        fname=None,
+        data=None,
+        max_assignments=None,
+        sort_annos=False,
+        overwrite_workers=True,
+        load_dataset=True,
+        load_workers=True,
+        load_images=True,
+        load_annos=True,
+        load_gt_annos=True,
+        load_combined_labels=True,
+        clear_previous_image_annos=False,
+    ):
         """ Load in a dataset json file.
         Args:
           sort_annos (bool): Should the annotations be sorted by timestamp?
@@ -589,6 +648,7 @@ class CrowdDataset(object):
             (e.g. maybe we are loading in a new data after learning worker
             skill parameters).
         """
+        # print("Load", self.workers.keys())
         if data is None and fname is None:
             print("Error: Must specify a file name to load or a datset dictionary.")
             return False
@@ -598,114 +658,133 @@ class CrowdDataset(object):
             with open(fname) as f:
                 data = json.load(f)
 
-        #self.images = {} #NOTE: I don't think we want to reset the images here.
+        # self.images = {} #NOTE: I don't think we want to reset the images here.
         if overwrite_workers:
             self.workers = {}
-        if 'dataset' in data and load_dataset:
-            self.parse(data['dataset'])
-        if 'workers' in data and load_workers:
-            for w in data['workers']:
+        if clear_previous_image_annos:
+            for image_id in self.images.keys():
+                self.images[image_id].z = dict()
+        if "dataset" in data and load_dataset:
+            self.parse(data["dataset"])
+        if "workers" in data and load_workers:
+            for w in data["workers"]:
                 if w not in self.workers:
                     self.workers[w] = self._CrowdWorkerClass_(w, self)
-                    self.workers[w].parse(data['workers'][w])
-        if 'images' in data and load_images:
-            for i in data['images']:
+                    self.workers[w].parse(data["workers"][w])
+        if "images" in data and load_images:
+            for i in data["images"]:
                 self.images[i] = self._CrowdImageClass_(i, self)
-                self.images[i].parse(data['images'][i])
-        if 'annos' in data and load_annos:
-            annos = data['annos']
+                self.images[i].parse(data["images"][i])
+        if "annos" in data and load_annos:
+            annos = data["annos"]
 
             # Sort the annotations by the 'created_at' field
             if sort_annos:
                 for anno in annos:
                     try:
-                        t = datetime.datetime.strptime(anno['created_at'],
-                                                       '%Y-%m-%d %H:%M:%S.%f')
+                        t = datetime.datetime.strptime(
+                            anno["created_at"], "%Y-%m-%d %H:%M:%S.%f"
+                        )
                     except ValueError:
-                        t = datetime.datetime.strptime(anno['created_at'],
-                                                       '%Y-%m-%d %H:%M:%S')
-                    anno['time'] = t
-                annos.sort(key=lambda x: x['time'])
+                        t = datetime.datetime.strptime(
+                            anno["created_at"], "%Y-%m-%d %H:%M:%S"
+                        )
+                    anno["time"] = t
+                annos.sort(key=lambda x: x["time"])
                 for anno in annos:
-                    del anno['time']
+                    del anno["time"]
 
             for l in annos:
-                i, w, a = l['image_id'], l['worker_id'], l['anno']
+                i, w, a = l["image_id"], l["worker_id"], l["anno"]
                 if i not in self.images:
                     self.images[i] = self._CrowdImageClass_(i, self)
                 if w not in self.workers:
+                    # print("NW:", w, self.workers.keys())
                     self.workers[w] = self._CrowdWorkerClass_(w, self)
                 if self.cv_worker and self.cv_worker.id in self.images[i].z:
                     has_cv = 1
                 else:
                     has_cv = 0
-                if (max_assignments is None or
-                        len(self.images[i].z) - has_cv < max_assignments):
+                if (
+                    max_assignments is None
+                    or len(self.images[i].z) - has_cv < max_assignments
+                ):
                     z = self._CrowdLabelClass_(self.images[i], self.workers[w])
                     z.parse(a)
                     self.images[i].z[w] = z
                     self.images[i].workers.append(w)
                     self.workers[w].images[i] = self.images[i]
 
+            # Update batch in workers
+            for workerId, worker in self.workers.items():
+                worker.nextBatch()
+
         # Are there ground truth labels available?
-        if 'gt_labels' in data and load_gt_annos:
-            for l in data['gt_labels']:
-                i, a = l['image_id'], l['label']
-                self.images[i].y_gt = self._CrowdLabelClass_(
-                    self.images[i], None)
+        if "gt_labels" in data and load_gt_annos:
+            for l in data["gt_labels"]:
+                i, a = l["image_id"], l["label"]
+                self.images[i].y_gt = self._CrowdLabelClass_(self.images[i], None)
                 self.images[i].y_gt.parse(a)
                 self.images[i].y = self.images[i].y_gt
 
         # Are there combined labels available?
-        if 'combined_labels' in data and load_combined_labels:
-            for l in data['combined_labels']:
-                i, a = l['image_id'], l['label']
+        if "combined_labels" in data and load_combined_labels:
+            for l in data["combined_labels"]:
+                i, a = l["image_id"], l["label"]
                 self.images[i].y = self._CrowdLabelClass_(self.images[i], None)
                 self.images[i].y.parse(a)
 
-    def save(self, fname, save_dataset=True, save_images=True, save_workers=True,
-             save_annos=True, save_gt_labels=True, save_combined_labels=True):
+    def save(
+        self,
+        fname,
+        save_dataset=True,
+        save_images=True,
+        save_workers=True,
+        save_annos=True,
+        save_gt_labels=True,
+        save_combined_labels=True,
+    ):
         """Save a dataset as a json file.
         """
         data = {}
         if save_dataset:
-            data['dataset'] = self.encode()
+            data["dataset"] = self.encode()
         if save_images:
-            data['images'] = {}
+            data["images"] = {}
             for i in self.images:
-                data['images'][i] = self.images[i].encode()
+                data["images"][i] = self.images[i].encode()
         if save_workers:
-            data['workers'] = {}
+            data["workers"] = {}
             for w in self.workers:
-                data['workers'][w] = self.workers[w].encode()
+                data["workers"][w] = self.workers[w].encode()
         if save_annos:
-            data['annos'] = []
+            data["annos"] = []
             for i in self.images:
                 for w in self.images[i].z:
-                    data['annos'].append({
-                        'image_id': i,
-                        'worker_id': w,
-                        'anno': self.images[i].z[w].encode()
-                    })
+                    data["annos"].append(
+                        {
+                            "image_id": i,
+                            "worker_id": w,
+                            "anno": self.images[i].z[w].encode(),
+                        }
+                    )
         if save_gt_labels:
-            data['gt_labels'] = []
+            data["gt_labels"] = []
             for i in self.images:
-                if hasattr(self.images[i], 'y_gt') and self.images[i].y_gt:
-                    data['gt_labels'].append({
-                        'image_id': i,
-                        'label': self.images[i].y_gt.encode()
-                    })
+                if hasattr(self.images[i], "y_gt") and self.images[i].y_gt:
+                    data["gt_labels"].append(
+                        {"image_id": i, "label": self.images[i].y_gt.encode()}
+                    )
         if save_combined_labels:
-            data['combined_labels'] = []
+            data["combined_labels"] = []
             for i in self.images:
-                if hasattr(self.images[i], 'y') and self.images[i].y:
-                    data['combined_labels'].append({
-                        'image_id': i,
-                        'label': self.images[i].y.encode()
-                    })
+                if hasattr(self.images[i], "y") and self.images[i].y:
+                    data["combined_labels"].append(
+                        {"image_id": i, "label": self.images[i].y.encode()}
+                    )
         if fname is None:
             return data
-        with open(fname, 'w') as f:
+        with open(fname, "w") as f:
             json.dump(data, f)
 
     def parse(self, data):
@@ -720,12 +799,13 @@ class CrowdDataset(object):
         return data
 
     def scan_image_directory(self, dir_name):
-        print('Scanning images from ' + dir_name + '...')
-        images = [f for f in os.listdir(dir_name)
-                  if os.path.isfile(os.path.join(dir_name, f))]
-        if not hasattr(self, 'images'):
+        print("Scanning images from " + dir_name + "...")
+        images = [
+            f for f in os.listdir(dir_name) if os.path.isfile(os.path.join(dir_name, f))
+        ]
+        if not hasattr(self, "images"):
             self.images = {}
-        if not hasattr(self, 'workers'):
+        if not hasattr(self, "workers"):
             self.workers = {}
         for f in images:
             i, _ = os.path.splitext(f)
@@ -733,6 +813,6 @@ class CrowdDataset(object):
             self.images[i].fname = os.path.join(dir_name, f)
 
     def copy_parameters_from(self, dataset, full=True):
-        #pylint: disable=unused-argument
-        if hasattr(dataset, 'fname'):
+        # pylint: disable=unused-argument
+        if hasattr(dataset, "fname"):
             self.fname = dataset.fname

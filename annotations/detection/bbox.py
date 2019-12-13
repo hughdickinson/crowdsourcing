@@ -38,15 +38,31 @@ from ...util.facility_location import FacilityLocation
 
 # Visualization parameters
 MIN_WIDTH = 30
-COLORS = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#00FFFF', '#FF00FF', '#FFFFFF', '#FFBF4A', '#000080', '#626200', '#006262', '#620062', '#44200F', '#008000']
+COLORS = [
+    "#FF0000",
+    "#00FF00",
+    "#0000FF",
+    "#FFFF00",
+    "#00FFFF",
+    "#FF00FF",
+    "#FFFFFF",
+    "#FFBF4A",
+    "#000080",
+    "#626200",
+    "#006262",
+    "#620062",
+    "#44200F",
+    "#008000",
+]
 NUM_COLS = 3
 
-TRUE_POSITIVE_COLOR = '#00FF00'
-FALSE_POSITIVE_COLOR = '#FF0000'
-GT_COLOR = '#00FF00'
-FINISHED_COLOR = '#0000FF'
-UNFINISHED_COLOR = '#FFFFFF'
+TRUE_POSITIVE_COLOR = "#00FF00"
+FALSE_POSITIVE_COLOR = "#FF0000"
+GT_COLOR = "#00FF00"
+FINISHED_COLOR = "#0000FF"
+UNFINISHED_COLOR = "#FFFFFF"
 FILL_ALPHA = 0.2
+
 
 class CrowdDatasetBBox(CrowdDataset):
     """Crowdsourcing images with multiple bounding box labels per image, such that a correspondence
@@ -61,29 +77,50 @@ class CrowdDatasetBBox(CrowdDataset):
         self._CrowdWorkerClass_ = CrowdWorkerBBox
         self._CrowdLabelClass_ = CrowdLabelBBox
 
-        self.prior_sigma_v0 = 5
-        self.prob_fp_beta = 5
-        self.prob_fn_beta = 5
-        self.prior_sigma_image_v0 = 0.5
-        self.prior_sigma_prior = 0.25
-        self.prob_fp_prior = .1
-        self.prob_fn_prior = .1
+        self.prior_sigma_v0 = 5  # Worker stiffness (number of pseudo-annotations)
+        self.prob_fp_beta = 5  # Stiffness (number of pseudo-annotations)
+        self.prob_fn_beta = 5  # Stiffness (number of pseudo-annotations)
+        self.prior_sigma_image_v0 = (
+            0.5
+        )  # Image stiffness (number of pseudo-annotations)
+        self.prior_sigma_prior = 0.25  # image/worker VARIANCE prior
+        self.prob_fp_prior = 0.1
+        self.prob_fn_prior = 0.1
         self.prior_sigma = self.prior_sigma_prior
         self.prob_fp = self.prob_fp_prior
         self.prob_fn = self.prob_fn_prior
         self.big_bbox_set = None
-        self.encode_exclude['big_bbox_set'] = True
-        self.skill_names = ['Prob False Positive', 'Boundary Sigma', 'Prob False Negative']
+        self.encode_exclude["big_bbox_set"] = True
+        self.skill_names = [
+            "Prob False Positive",
+            "Boundary Sigma",
+            "Prob False Negative",
+        ]
+
+        self.suppressWorkers = False
 
         # MTurk Data
         name = self.name if self.name and len(self.name) > 0 else "objects"
-        self.hit_params = {'object_name': name}
-        dollars_per_hour, objects_per_image, sec_per_object, sec_per_hour = 8, 2.5, 3.0, 3600
+        self.hit_params = {"object_name": name}
+        dollars_per_hour, objects_per_image, sec_per_object, sec_per_hour = (
+            8,
+            2.5,
+            3.0,
+            3600,
+        )
         self.reward = 0.15
-        self.images_per_hit = int(math.ceil(self.reward / dollars_per_hour * sec_per_hour / sec_per_object / objects_per_image))
+        self.images_per_hit = int(
+            math.ceil(
+                self.reward
+                / dollars_per_hour
+                * sec_per_hour
+                / sec_per_object
+                / objects_per_image
+            )
+        )
         self.description = self.title = "Draw boxes around " + name + " in images"
         self.keywords = "boxes,images,labelling," + name
-        self.html_template_dir = 'html/bbox'
+        self.html_template_dir = "html/bbox"
 
     def parse(self, data):
         super(CrowdDatasetBBox, self).parse(data)
@@ -107,17 +144,28 @@ class CrowdDatasetBBox(CrowdDataset):
         # Match worker annotations to true labels
         for i in self.images:
             for w in self.images[i].z:
-                y = self.images[i].y if hasattr(self.images[i], 'y') else None
+                y = self.images[i].y if hasattr(self.images[i], "y") else None
                 if y is not None:
                     self.images[i].z[w].match_to(y)
 
         # Use empirical counts of the number of false positives / false negatives
         # to compute prob_fp and prob_fn
-        num_fp, num_p, num_fn, num_tp = self.prob_fp_prior * self.prob_fp_beta, self.prob_fp_beta, self.prob_fn_prior * self.prob_fn_beta, self.prob_fn_beta
+        num_fp, num_p, num_fn, num_tp = (
+            self.prob_fp_prior * self.prob_fp_beta,
+            self.prob_fp_beta,
+            self.prob_fn_prior * self.prob_fn_beta,
+            self.prob_fn_beta,
+        )
         for i in self.images:
-            y = self.images[i].y if hasattr(self.images[i], 'y') else None
-            has_cv = (1 if (self.cv_worker and self.cv_worker.id in self.images[i].z) else 0)
-            if y is not None and y.bboxes is not None and len(self.images[i].z) - has_cv > 1:
+            y = self.images[i].y if hasattr(self.images[i], "y") else None
+            has_cv = (
+                1 if (self.cv_worker and self.cv_worker.id in self.images[i].z) else 0
+            )
+            if (
+                y is not None
+                and y.bboxes is not None
+                and len(self.images[i].z) - has_cv > 1
+            ):
                 for w in self.images[i].z:
                     z = self.images[i].z[w]
                     if not z.is_computer_vision():
@@ -137,12 +185,18 @@ class CrowdDatasetBBox(CrowdDataset):
 
         # Compute sample variance of annotated bounding boxes compared to matched true bounding boxes (plus scaled-inv-chi priors)
         # and use that to compute worker sigma
-        S = self.prior_sigma_v0 * (self.prior_sigma_prior**2)
+        S = self.prior_sigma_v0 * (self.prior_sigma_prior ** 2)
         num = self.prior_sigma_v0
         for i in self.images:
-            y = self.images[i].y if hasattr(self.images[i], 'y') else None
-            has_cv = (1 if (self.cv_worker and self.cv_worker.id in self.images[i].z) else 0)
-            if y is not None and y.bboxes is not None and len(self.images[i].z) - has_cv > 1:
+            y = self.images[i].y if hasattr(self.images[i], "y") else None
+            has_cv = (
+                1 if (self.cv_worker and self.cv_worker.id in self.images[i].z) else 0
+            )
+            if (
+                y is not None
+                and y.bboxes is not None
+                and len(self.images[i].z) - has_cv > 1
+            ):
                 # print('Computing worker sigma', y.bboxes)
                 for w in self.images[i].z:
                     z = self.images[i].z[w]
@@ -158,6 +212,7 @@ class CrowdDatasetBBox(CrowdDataset):
         self.initialize_parameters()
 
     def initialize_parameters(self, avoid_if_finished=False):
+
         # Initialize worker responses probabilities to the global priors
         for worker_id, worker in self.workers.items():
             worker.prob_fp = self.prob_fp
@@ -220,28 +275,34 @@ class CrowdDatasetBBox(CrowdDataset):
                     if not anno.is_computer_vision():
                         num_total += 1
                         for b in anno.bboxes:
-                            bn = SingleBBox(x=b.x / float(anno.image_width), y=b.y / float(anno.image_height),
-                                            x2=b.x2 / float(anno.image_width), y2=b.y2 / float(anno.image_height))
+                            bn = SingleBBox(
+                                x=b.x / float(anno.image_width),
+                                y=b.y / float(anno.image_height),
+                                x2=b.x2 / float(anno.image_width),
+                                y2=b.y2 / float(anno.image_height),
+                            )
                             bn.num = 1
                             good = True
                             for bn2 in boxes:
-                                if bn.dist(bn2) < .5:
+                                if bn.dist(bn2) < 0.5:
                                     bn2.num += 1
                                     good = False
                             if good:
-                                boxes.append(bn)  # This box did not overlap with any previous box by more than 0.5
+                                boxes.append(
+                                    bn
+                                )  # This box did not overlap with any previous box by more than 0.5
         for b in boxes:
             b.prob_fp = b.num / float(num_total)
         self.big_bbox_set = boxes
 
     def copy_parameters_from(self, dataset, full=True):
         super(CrowdDatasetBBox, self).copy_parameters_from(dataset, full=full)
-        if hasattr(dataset, 'big_bbox_set'):
+        if hasattr(dataset, "big_bbox_set"):
             self.big_bbox_set = dataset.big_bbox_set
 
 
 def log_gaussian(x, sigma):
-    return -.5 * (x / sigma)**2 - .5 * math.log(2 * math.pi) - math.log(sigma)
+    return -0.5 * (x / sigma) ** 2 - 0.5 * math.log(2 * math.pi) - math.log(sigma)
 
 
 def dummy_match_cost(b, thresh):
@@ -255,7 +316,9 @@ def match_cost(b, b_gt, z, d2=None, gt_fixed=False):
 
     # [-Gaussian with x=IOU distance-]   [b is a true pos]
     c = -(log_gaussian(d2, b.sigma) + math.log(max(1e-8, 1 - b.prob_fp)))
-    if not gt_fixed:  # gt_fixed signifies that the ground truth is already set (when it isn't set, some terms were stored in openCost)
+    if (
+        not gt_fixed
+    ):  # gt_fixed signifies that the ground truth is already set (when it isn't set, some terms were stored in openCost)
         #   [Undo false neg in openCost] [ b is a true pos]
         c -= -math.log(max(1e-8, z.prob_fn)) + math.log(max(1e-8, 1 - z.prob_fn))
     return c
@@ -266,12 +329,18 @@ class CrowdImageBBox(CrowdImage):
         super(CrowdImageBBox, self).__init__(id, params)
         self.risk, self.e_fn, self.e_fp, self.e_boundaries_off = None, None, None, None
         self.num_possible_bbox_locs = 50.0
-        self.encode_exclude['fc_cache'] = True
+        self.suppressed_workers = set()
+        self.encode_exclude["fc_cache"] = True
+        self.encode_exclude["suppressed_workers"] = True
 
     def crowdsource_simple(self, avoid_if_finished=False):
-        self.predict_true_labels(avoid_if_finished=avoid_if_finished, simple=True, refine=False)
+        self.predict_true_labels(
+            avoid_if_finished=avoid_if_finished, simple=True, refine=False
+        )
 
-    def predict_true_labels(self, avoid_if_finished=False, simple=False, refine=False, thresh=None):
+    def predict_true_labels(
+        self, avoid_if_finished=False, simple=False, refine=False, thresh=None
+    ):
         """ Find a near optimal set of bboxes to be added to the predicted label and which worker boxes
         to assign to each of them, where optimality is defined in terms of the log-likelihood of the joint
         distribution between all worker boxes and predicted boxes. If simple=True, instead, add bboxes to
@@ -284,36 +353,62 @@ class CrowdImageBBox(CrowdImage):
 
         big_bbox_set = self.params.get_big_bbox_set()
 
-        worker_ids = [w for w in self.z]
+        # Get the IDs of all workers who annotated this image and are not suppressed
+        worker_ids = [w for w in self.z if w not in self.suppressed_workers]
 
-        # Adding a box to the predicted label set without connecting anything to it yet incurs a
-        # false negatives for all workers
+        # NOTE: Adding a box to the predicted label set without connecting anything
+        # to it yet incurs a false negatives for all workers.
+
+        # Initialize the cost of opening a facility
         openCost = 0
 
         # The connection algorithm uses the concept of a "star", comprising a central
         # facility with multiple connected cities. For a the bounding box problem, any
         # bounding box can be a facility.
+
         # A facility will open if it has the lowest cost effectiveness. The cost
         # effectiveness is defined as the cost of opening the facility, plus the sum of
         # the cost of connecting all the cities, divided by the size of the star.
+
         # A simple algorithm would be to make the connection cost zero for overlapping
         # boxes and non-zero for non-overlapping boxes.
+
         # In simple mode, the opening cost for any facility is simply half of the
         # number of workers who annotated the image.
         for k in range(len(worker_ids)):
             zk = self.z[worker_ids[k]]
             if simple:
-                openCost += .5  # simple case: open if at least 50% of workers can assign a bbox to it
+                # In the simple case each worker has an opportunity to mark this
+                # facility. That opportunity costs 0.5... ???
+                openCost += 0.5
             else:
+                # In non-simple mode, different workers have different likelihoods
+                # of missing this facility.
                 openCost += -math.log(zk.prob_fn)
 
-        dummy = -1  # Connecting a worker box to the dummy facility means it will be left as a false positive
-        objs = {}  # Will hold a list of all worker bounding boxes, each represented as a 2-tuple (worker_ind,box_ind)
-        openCosts = {}  # Cost of opening up a facility (adding a bounding box to the predicted label)
+        # Connecting a worker box to the dummy facility means it will be left
+        # as a false positive
+        dummy = -1
+        # objs Will hold a list of all worker bounding boxes, each represented as a
+        # 2-tuple (worker_ind,box_ind)
+        # Keys are bounding box IDs
+        objs = {}
+        # The dummy (null) facility gets fixed, negative worker and bbox IDs.
         objs[dummy] = (-1, -1)
+        # Cost of opening up a facility (adding a bounding box to the predicted label)
+        openCosts = {}
+        # The dummy facility costs nothing to open (it already "exists"!)
         openCosts[dummy] = 0
+        # A list containing a per-worker list of global box IDs for that worker's boxes.
+        # i.e. Assigns a unique global ID to every single box assigned to this image.
         objs_inv = []
+
+        # The current global unique ID
         curr_obj = 0
+
+        # List of tuples defining the cost of connecting any "city" (worker box)
+        # to any "facility" (ground truth box). Tuple entries are:
+        # (cost, facility, city)
         costs = []
 
         # map between global object numbers for this image
@@ -325,6 +420,8 @@ class CrowdImageBBox(CrowdImage):
             objs_inv.append([])
             # loop over worker annotations (for this worker, for this image)
             for bj_i in range(len(self.z[worker_ids[j]].bboxes)):
+                # Add the current global ID to the list of global IDs associated
+                # with this worker's bboxes.
                 objs_inv[j].append(curr_obj)
                 # key to look up the worker and annotation for the global object index
                 objs[curr_obj] = (j, bj_i)
@@ -334,26 +431,38 @@ class CrowdImageBBox(CrowdImage):
             # Disallowing connections prevents bounding boxes provided by the same
             # worker for the same image (which cannot reasonably annotate the same
             # feature).
-            # Loop over workers
+
+            # Loop over boxes for this worker
             for bj_i in range(len(self.z[worker_ids[j]].bboxes)):
                 # initialize: keys are global object ids drawn from this
-                # worker's list of bounding boxes
+                # worker's list of bounding boxes.
+
+                # Values are dicts with keys that are also global object ids
+                # drawn from this worker's list of bounding boxes.
                 cityDisallowedCityNeighbors[objs_inv[j][bj_i]] = {}
                 for bj_j in range(len(self.z[worker_ids[j]].bboxes)):
-                    if bj_i != bj_j:  # a worker's bbox cannot be matched to another bbox he labeled in the same image
-                        # i.e. identify global bbox ids that cannot be associated for this image.
-                        cityDisallowedCityNeighbors[objs_inv[j][bj_i]][objs_inv[j][bj_j]] = dummy
+                    if bj_i != bj_j:
+                        # a worker's bbox cannot be matched to another bbox they
+                        # labeled in the same image
+                        # i.e. identify global bbox ids that cannot be associated
+                        # for this image.
+                        cityDisallowedCityNeighbors[objs_inv[j][bj_i]][
+                            objs_inv[j][bj_j]
+                        ] = dummy  # HJD why dummy? Just a placeholder value?
 
         # Now compute the connection costs for each city.
+
         # A subtlety of the algorithm is the existence of the "dummy" facilty, which
         # is reserved for all bounding boxes that do not overlap with any others.
-        # The cost of connecting any city to the dummy facility is defined to be unity.
+
+        # In simple mode the cost of connecting any city to the dummy facility
+        # is defined to be unity.
         for j in range(len(worker_ids)):
-            zj = self.z[worker_ids[j]] # annotations for this worker
+            zj = self.z[worker_ids[j]]  # annotations for this worker
             # loop over the annotations provided by this worker.
             for bj_i in range(len(zj.bboxes)):
-                bj = zj.bboxes[bj_i] # the bounding box object
-                oj = objs_inv[j][bj_i] # the global bounding box id
+                bj = zj.bboxes[bj_i]  # the bounding box object
+                oj = objs_inv[j][bj_i]  # the global bounding box id
 
                 # Matching to the dummy facility means this worker box doesn't
                 # get assigned to any predicted box (incurs false positive)
@@ -367,9 +476,11 @@ class CrowdImageBBox(CrowdImage):
 
                 # Gaussian cost of matching an object to itself
                 if simple:
-                    # The cost of connecting a bounding box to itself is 0.
+                    # In siimple mod, the cost of connecting a bounding box to
+                    # itself is 0.
                     costs.append((0, oj, oj))
                 else:
+                    # Otherwise, the cost depends on worker fp and fn probs
                     costs.append((match_cost(bj, bj, zj, d2=0), oj, oj))
 
                 # Adding a box to the predicted label set without connecting anything
@@ -384,22 +495,28 @@ class CrowdImageBBox(CrowdImage):
                         bk = zk.bboxes[bk_i]
                         ok = objs_inv[k][bk_i]
                         if simple:
-                            # d is 1-IoU. Maximized when intersection is zero.
+                            # d is 1-IoU. Maximized at 1 when intersection is zero.
                             # Increasing d implies decreasing overlap.
+
                             # Requiring a minimum level of overlap implies an
                             # upper limit in d.
                             d = bj.dist(bk, verbose=False)
-                            if d < thresh:  # simple case: boxes match if they are at least 50% overlapping
-                                # print('Joinable: {}, {}, {}\n {}\n {}'.format(oj, ok, d, bj, bk))
-                                # If boxes do overlap, then connecting them costs nothing
+                            if d < thresh:
+                                # simple case: boxes match if 1-IOU < threshold.
+
+                                # If boxes do overlap, then connecting them costs nothing.
+
                                 # Opening a facility connected to an arbitrarily large number of
-                                # overlapping boxes incurrs only the opening cost of the facility.
-                                costs.append((0, oj, ok)) # it costs nothing to link overlapping boxes
+                                # overlapping boxes incurs only the opening cost of the facility.
+
+                                # Costs apply in both directions i.e. if j/i are
+                                # facility/city or vice versa.
+                                costs.append((0, oj, ok))
+
                                 costs.append((0, ok, oj))
-                            else:
-                                pass
-                                # print('NOT Joinable: {}, {}, {}\n {}\n {}'.format(oj, ok, d, bj, bk))
                         else:
+                            # Not simple mode - cost depends on degree of overlap and
+                            # worker FP, FN probabilities.
                             d2 = bj.dist2(bk)
                             if d2 < 1:
                                 # matching box zk to zj incurs a gaussian cost, but means that bk won't be a false positive and bj won't be a false negative
@@ -416,8 +533,9 @@ class CrowdImageBBox(CrowdImage):
         # and which worker boxes to assign to them
         # * cityFacilityCosts encodes the cost of connecting any two objects with
         #   one as the facility and one as a satellite. In simple mode, this will be
-        #   zero if the boxes overlap. If the boxes do not overlap, then no cost will
-        #   be listed. Non overlapping boxes can only be connected to the  dummy facility.
+        #   zero if the boxes overlap by a threshold amount. If the boxes do not overlap
+        #   by this threshold amount, then no cost will be listed.
+        #   Non overlapping boxes can only be connected to the  dummy facility.
         # * cityDisallowedCityNeighbors lists objects that cannot reasonably be
         #   connected because they were identified by the same worker in the same image.
         # * openFacilityCosts lists the cost of opening any facility, equal to half the
@@ -425,11 +543,26 @@ class CrowdImageBBox(CrowdImage):
         # The cost-effectiveness of opening a facility is therefore 0.5*Nw/N(boxes_in_group)
         [facilities, total_cost] = FacilityLocation(
             cityFacilityCosts=costs,
-            cityDisallowedCityNeighbors=cityDisallowedCityNeighbors
-            ).solve(
-                openFacilityCosts=openCosts,
-                debug=0
-                )
+            cityDisallowedCityNeighbors=cityDisallowedCityNeighbors,
+        ).solve(openFacilityCosts=openCosts, debug=0)
+
+        # if simple:
+        #     self.simple_fac_count = len(facilities)
+        # else:
+        #     self.full_fac_count = len(facilities)
+        #     if self.simple_fac_count > 0 or self.full_fac_count > 0:
+        #         print(
+        #             "IMAGE {} BOX COUNTS - Simple: {} Full: {}. Match: {}. Facs: {}".format(
+        #                 self.id,
+        #                 self.simple_fac_count,
+        #                 self.full_fac_count,
+        #                 self.simple_fac_count == self.full_fac_count,
+        #                 facilities
+        #                 if self.full_fac_count == 1
+        #                 and self.simple_fac_count != self.full_fac_count
+        #                 else "N/A",
+        #             )
+        #         )
 
         # Parse the result of the matching problem, and use that to store the predicted combined labels and assignments of worker boxes to predicted boxes
         self.y = CrowdLabelBBox(self, None)
@@ -437,39 +570,66 @@ class CrowdImageBBox(CrowdImage):
         for f in facilities:
             if f == dummy:
                 for c in facilities[f]:  # boxes assigned to the dummy
+                    # There is no associated ground truth box "a"
                     self.z[worker_ids[objs[c][0]]].bboxes[objs[c][1]].a = None
             else:
-                if objs[f][0] >= 0: # worker index > 0
-                    zf = self.z[worker_ids[objs[f][0]]].bboxes[objs[f][1]]  # boxes assigned to zf
+                if objs[f][0] >= 0:  # worker index > 0
+                    zf = self.z[worker_ids[objs[f][0]]].bboxes[
+                        objs[f][1]
+                    ]  # boxes assigned to zf
                     b = SingleBBox(x=zf.x, y=zf.y, x2=zf.x2, y2=zf.y2)
                 else:
                     bb = big_bbox_set[objs[f][1]]
-                    b = SingleBBox(x=bb.x * self.image_width, y=bb.y * self.image_height, x2=bb.x2 * self.image_width, y2=bb.y2 * self.image_height)
+                    b = SingleBBox(
+                        x=bb.x * self.image_width,
+                        y=bb.y * self.image_height,
+                        x2=bb.x2 * self.image_width,
+                        y2=bb.y2 * self.image_height,
+                    )
                 self.y.bboxes.append(b)
-                b.est_var = self.params.prior_sigma**2 / max(1e-8,len(facilities[f]))  # variance in estimation of b
+                # Use prior image difficulty (prior_sigma, note different to worker
+                # prior sigma) to estimate the likely variance of this bounding
+                # box.
+                b.est_var = self.params.prior_sigma ** 2 / max(
+                    1e-8, len(facilities[f])
+                )  # variance in estimation of b
                 for c in facilities[f]:
-                    self.z[worker_ids[objs[c][0]]].bboxes[objs[c][1]].a = len(self.y.bboxes) - 1
+                    self.z[worker_ids[objs[c][0]]].bboxes[objs[c][1]].a = (
+                        len(self.y.bboxes) - 1
+                    )
         if refine:
             self.refine_true_label()
         self.sigmas = [self.params.prior_sigma for b in self.y.bboxes]
-        self.fc_cache = (costs, openCosts, openCost, cityDisallowedCityNeighbors, facilities, dummy)
+        self.fc_cache = (
+            costs,
+            openCosts,
+            openCost,
+            cityDisallowedCityNeighbors,
+            facilities,
+            dummy,
+        )
 
         for w in self.z:
             self.z[w].colorize()
 
     def compute_expected_false_negatives(self, thresh=None):
-        """ Compute the expected number of false negatives. We will do this by rerunning the facility
-        location problem on an instance where:
-          1. all cities correspond to bounding boxes that were connected to the dummy node
-          2. all facilities are bounding boxes that we not selected to be facilities when computing the predicted labels
+        """ Compute the expected number of false negatives. We will do this by
+        rerunning the facility location problem on an instance where:
+          1. all cities correspond to bounding boxes that were connected to the
+            dummy node
+          2. all facilities are bounding boxes that we not selected to be
+            facilities when computing the predicted labels
           3. no dummy node is available
-        For each facility that is opened up (i.e. potential tp missed (so a fn) when computing the predicted labels) we compute the
+        For each facility that is opened up (i.e. potential tp missed (so a fn)
+        when computing the predicted labels) we compute the
         cost of opening that facility vs leaving its cities as false positives.
         """
         thresh = CrowdDatasetBBox.OVERLAP_THRESH if thresh is None else thresh
 
         big_bbox_set = self.params.get_big_bbox_set()
-        costs, openCosts, openCost, cityDisallowedCityNeighbors, facilities, dummy = self.fc_cache[:]
+        costs, openCosts, openCost, cityDisallowedCityNeighbors, facilities, dummy = self.fc_cache[
+            :
+        ]
 
         # Continue the above facility location algorithm if we weren't allowed to match anything
         # to the dummy (no false positive worker annotations). Then for each new facility (opened object),
@@ -483,12 +643,17 @@ class CrowdImageBBox(CrowdImage):
             for c in c_f:
                 costs_c[c] = {}
             for c in costs:
-                if c[2] in c_f:  # costs2 will be a subset of costs that only includes entries with a city that was matched to dummy
+                if (
+                    c[2] in c_f
+                ):  # costs2 will be a subset of costs that only includes entries with a city that was matched to dummy
                     if c[1] not in facilities:
                         costs2.append(c)
                         openCosts2[c[1]] = openCosts[c[1]]
                     costs_c[c[2]][c[1]] = c[0]
-            [facilities2, total_cost] = FacilityLocation(cityFacilityCosts=costs2, cityDisallowedCityNeighbors=cityDisallowedCityNeighbors).solve(openFacilityCosts=openCosts2)
+            [facilities2, total_cost] = FacilityLocation(
+                cityFacilityCosts=costs2,
+                cityDisallowedCityNeighbors=cityDisallowedCityNeighbors,
+            ).solve(openFacilityCosts=openCosts2)
             for f in facilities2:
                 p_cost = openCosts[f]
                 f_cost = 0
@@ -496,7 +661,9 @@ class CrowdImageBBox(CrowdImage):
                     p_cost += costs_c[c][f]
                     f_cost += costs_c[c][dummy]
                 m = max(p_cost, f_cost)
-                self.e_fn += math.exp(-(p_cost - m)) / (math.exp(-(p_cost - m)) + math.exp(-(f_cost - m)))
+                self.e_fn += math.exp(-(p_cost - m)) / (
+                    math.exp(-(p_cost - m)) + math.exp(-(f_cost - m))
+                )
 
         # Consider opening other bounding boxes from a larger set than the ones labeled by workers for this image
         for b in big_bbox_set:
@@ -514,15 +681,24 @@ class CrowdImageBBox(CrowdImage):
 
     # Predict true labels assuming assignments are already known
     def refine_true_label(self):
-        x, y, x2, y2, s = [0] * len(self.y.bboxes), [0] * len(self.y.bboxes), [0] * len(self.y.bboxes), [0] * len(self.y.bboxes), [0] * len(self.y.bboxes)
+        x, y, x2, y2, s = (
+            [0] * len(self.y.bboxes),
+            [0] * len(self.y.bboxes),
+            [0] * len(self.y.bboxes),
+            [0] * len(self.y.bboxes),
+            [0] * len(self.y.bboxes),
+        )
         for w in self.z:
             for b in self.z[w].bboxes:
-                if not b.a is None:
-                    x[b.a] += b.x / (b.sigma**2)
-                    y[b.a] += b.y / (b.sigma**2)
-                    x2[b.a] += b.x2 / (b.sigma**2)
-                    y2[b.a] += b.y2 / (b.sigma**2)
-                    s[b.a] += 1.0 / (b.sigma**2)
+                if b.a is not None:
+                    try:
+                        x[b.a] += b.x / (b.sigma ** 2)
+                        y[b.a] += b.y / (b.sigma ** 2)
+                        x2[b.a] += b.x2 / (b.sigma ** 2)
+                        y2[b.a] += b.y2 / (b.sigma ** 2)
+                        s[b.a] += 1.0 / (b.sigma ** 2)
+                    except IndexError as e:
+                        print("Caught {}".format(e))
         for i in range(len(self.y.bboxes)):
             b = self.y.bboxes[i]
             b.x, b.y, b.x2, b.y2 = x[i] / s[i], y[i] / s[i], x2[i] / s[i], y2[i] / s[i]
@@ -531,8 +707,18 @@ class CrowdImageBBox(CrowdImage):
         # Scaled-inv-chi-squared prior for sigma parameters
         ll = 0
         for i in range(len(self.y.bboxes)):
-            ll += -self.params.prior_sigma_image_v0 * (self.params.prior_sigma**2) / (2 * (self.sigmas[i]**2)) - (1 + self.params.prior_sigma_image_v0 / 2) * math.log(self.sigmas[i]**2)
-        return ll / len(self.y.bboxes) if len(self.y.bboxes) > 0 else -self.params.prior_sigma_image_v0 / 2 - (1 + self.params.prior_sigma_image_v0 / 2) * math.log(self.params.prior_sigma**2)
+            ll += -self.params.prior_sigma_image_v0 * (self.params.prior_sigma ** 2) / (
+                2 * (self.sigmas[i] ** 2)
+            ) - (1 + self.params.prior_sigma_image_v0 / 2) * math.log(
+                self.sigmas[i] ** 2
+            )
+        return (
+            ll / len(self.y.bboxes)
+            if len(self.y.bboxes) > 0
+            else -self.params.prior_sigma_image_v0 / 2
+            - (1 + self.params.prior_sigma_image_v0 / 2)
+            * math.log(self.params.prior_sigma ** 2)
+        )
 
     # Estimate difficulty parameters
     def estimate_parameters(self, avoid_if_finished=False):
@@ -542,15 +728,25 @@ class CrowdImageBBox(CrowdImage):
         if avoid_if_finished and self.finished:
             return
 
-        S = [self.params.prior_sigma_image_v0 * (self.params.prior_sigma**2) for b in self.y.bboxes]
-        num = [self.params.prior_sigma_image_v0 for b in self.y.bboxes]  # [2 + self.params.prior_sigma_image_v0 for b in self.y.bboxes]
+        S = [
+            self.params.prior_sigma_image_v0 * (self.params.prior_sigma ** 2)
+            for b in self.y.bboxes
+        ]
+        num = [
+            self.params.prior_sigma_image_v0 for b in self.y.bboxes
+        ]  # [2 + self.params.prior_sigma_image_v0 for b in self.y.bboxes]
         for w in self.z:
             z = self.z[w]
             if not z.is_computer_vision():
                 for b in z.bboxes:
                     if not b.a is None:
-                        S[b.a] += (1 - b.w) * (b.dist2(self.y.bboxes[b.a]) + self.y.bboxes[b.a].est_var)
-                        num[b.a] += (1 - b.w)
+                        try:
+                            S[b.a] += (1 - b.w) * (
+                                b.dist2(self.y.bboxes[b.a]) + self.y.bboxes[b.a].est_var
+                            )
+                            num[b.a] += 1 - b.w
+                        except IndexError as e:
+                            print("Caught {}".format(e))
         self.sigmas = [math.sqrt(S[i] / num[i]) for i in range(len(self.y.bboxes))]
 
     def check_finished(self, set_finished=True, thresh=None, loss_fn=1, loss_fp=1):
@@ -569,7 +765,9 @@ class CrowdImageBBox(CrowdImage):
         # Expected number of inaccurate true positives
         self.e_boundaries_off = 0
         # Initialize the risk with the expected number of false negatives
-        self.risk = self.compute_expected_false_negatives() * loss_fn  # expected number of false negatives in other locations in the image
+        self.risk = (
+            self.compute_expected_false_negatives() * loss_fn
+        )  # expected number of false negatives in other locations in the image
 
         # Probability a box is a false positive
         p_fp = [1] * len(self.y.bboxes)
@@ -582,17 +780,28 @@ class CrowdImageBBox(CrowdImage):
             matches = [None for i in range(len(self.y.bboxes))]
             for b in anno.bboxes:
                 if b.a is not None:
-                    assert matches[b.a] is None, 'Multiple boxes matched to the same ground truth, image=' + str(self.id) + ", worker=" + str(w) + ", a=" + str(b.a) + " " + str(self.z[w].encode())
+                    assert matches[b.a] is None, (
+                        "Multiple boxes matched to the same ground truth, image="
+                        + str(self.id)
+                        + ", worker="
+                        + str(worker_id)
+                        + ", a="
+                        + str(b.a)
+                        + " "
+                        + str(self.z[worker_id].encode())
+                    )
                     matches[b.a] = b
-                    s[b.a] += 1.0 / (2 * (b.sigma**2))
+                    s[b.a] += 1.0 / (2 * (b.sigma ** 2))
 
             for i in range(len(self.y.bboxes)):
                 if matches[i] is None:
-                    p_fp[i] *= (1 - anno.prob_fn)
+                    p_fp[i] *= 1 - anno.prob_fn
                     p_tp[i] *= anno.prob_fn
                 else:
                     p_fp[i] *= matches[i].prob_fp
-                    p_tp[i] *= (1 - matches[i].prob_fp)  # (1-self.z[w].prob_fn)*(1-matches[i].prob_fp)
+                    p_tp[i] *= (
+                        1 - matches[i].prob_fp
+                    )  # (1-self.z[w].prob_fn)*(1-matches[i].prob_fp)
 
         for i in range(len(self.y.bboxes)):
             # probability this ground truth box is a false positive
@@ -601,7 +810,10 @@ class CrowdImageBBox(CrowdImage):
             # probability this predicted ground truth box is too far away from the true location
             self.y.bboxes[i].e_boundaries_off = 1 - math.erf(thresh * math.sqrt(s[i]))
 
-            self.risk += self.y.bboxes[i].e_fp * loss_fp + (self.y.bboxes[i].e_boundaries_off * (loss_fn + (1 - self.y.bboxes[i].e_fp) * loss_fp))
+            self.risk += self.y.bboxes[i].e_fp * loss_fp + (
+                self.y.bboxes[i].e_boundaries_off
+                * (loss_fn + (1 - self.y.bboxes[i].e_fp) * loss_fp)
+            )
             self.e_fp += self.y.bboxes[i].e_fp
             self.e_boundaries_off += self.y.bboxes[i].e_boundaries_off
 
@@ -618,9 +830,9 @@ class CrowdImageBBox(CrowdImage):
 
     def copy_parameters_from(self, image, full=True):
         super(CrowdImageBBox, self).copy_parameters_from(image, full=full)
-        if hasattr(image, 'width'):
+        if hasattr(image, "width"):
             self.width = image.width
-        if hasattr(image, 'height'):
+        if hasattr(image, "height"):
             self.height = image.height
 
 
@@ -628,100 +840,285 @@ class CrowdWorkerBBox(CrowdWorker):
     def __init__(self, id, params):
         super(CrowdWorkerBBox, self).__init__(id, params)
 
+        self.encode_exclude["suppressed_images"] = True
+
+        print("*** NEW WORKER ***", self.id)
+
         # worker skill parameters
-        self.sigma = None  # worker's standard deviation for annotating boundaries of a bbox
-        self.prob_fp = None  # probability that a box annotated by this worker will be a false positive
-        self.prob_fn = None  # probability that a ground truth box will be missed by this worker
+        self.sigma = (
+            None
+        )  # worker's standard deviation for annotating boundaries of a bbox
+        self.prob_fp = (
+            None
+        )  # probability that a box annotated by this worker will be a false positive
+        self.prob_fn = (
+            None
+        )  # probability that a ground truth box will be missed by this worker
         self.finished = False
-        self.sigma_array = []   ### VM-edit
-        self.prob_fp_array = [] ### VM-edit
-        self.prob_fn_array = [] ### VM-edit
+        self.sigma_array = []  # all batches
+        self.prob_fp_array = []  # all batches
+        self.prob_fn_array = []  # all batches
+        self.dsigma_array = []  # all batches
+        self.dprob_fp_array = []  # all batches
+        self.dprob_fn_array = []  # all batches
+        self.image_id_array = []  # all batches
+        self.num_fp_array = []  # all batches
+        self.num_fn_array = []  # all batches
+
+        self.skill = None
+        self.suppressed_images = None
+
+    def nextBatch(self):
+        self.sigma_array.append([])
+        self.prob_fp_array.append([])
+        self.prob_fn_array.append([])
+        self.dsigma_array.append([])
+        self.dprob_fp_array.append([])
+        self.dprob_fn_array.append([])
+        self.image_id_array.append([])
+        self.num_fp_array.append([])
+        self.num_fn_array.append([])
+
+        self.numIters = 0
+        self.suppressed = False
+        self.savedSkill = self.skill
+        self.suppressed_images = set()
+
 
     def compute_log_likelihood(self):
         # Beta prior for worker false positive parameter
-        ll = ((self.params.prob_fp * self.params.prob_fp_beta - 1) * math.log(self.prob_fp) +
-              ((1 - self.params.prob_fp) * self.params.prob_fp_beta - 1) * math.log(1 - self.prob_fp))
+        ll = (self.params.prob_fp * self.params.prob_fp_beta - 1) * math.log(
+            self.prob_fp
+        ) + ((1 - self.params.prob_fp) * self.params.prob_fp_beta - 1) * math.log(
+            1 - self.prob_fp
+        )
 
         # Beta prior for worker false negative parameter
-        ll += ((self.params.prob_fn * self.params.prob_fn_beta - 1) * math.log(self.prob_fn) +
-               ((1 - self.params.prob_fn) * self.params.prob_fn_beta - 1) * math.log(1 - self.prob_fn))
+        ll += (self.params.prob_fn * self.params.prob_fn_beta - 1) * math.log(
+            self.prob_fn
+        ) + ((1 - self.params.prob_fn) * self.params.prob_fn_beta - 1) * math.log(
+            1 - self.prob_fn
+        )
 
         # Scaled-inv-chi-squared prior for sigma parameter
-        ll += -self.params.prior_sigma_v0 * (self.params.prior_sigma**2) / (2 * (self.sigma**2)) - (1 + self.params.prior_sigma_v0 / 2) * math.log(self.sigma**2)
+        ll += -self.params.prior_sigma_v0 * (self.params.prior_sigma ** 2) / (
+            2 * (self.sigma ** 2)
+        ) - (1 + self.params.prior_sigma_v0 / 2) * math.log(self.sigma ** 2)
 
         return ll
 
-    def estimate_parameters(self, avoid_if_finished=False,new_iter=True):       ### VM-edit; added new_iter
+    def estimate_parameters(
+        self, avoid_if_finished=False, new_iter=True
+    ):  ### VM-edit; added new_iter
+        def suppressForSigma(delta, threshold=0.1):
+            return self.params.suppressWorkers and delta > threshold
 
-        if avoid_if_finished and self.finished:
-            return
+        def suppressForFP(delta, threshold=0.05):
+            return self.params.suppressWorkers and delta > threshold
+
+        def suppressForFN(delta, threshold=0.05):
+            return self.params.suppressWorkers and delta > threshold
+
+        if (avoid_if_finished and self.finished) or self.suppressed:
+            return False, self.id
+
+        if new_iter:  ### VM-edit
+            self.numIters += 1
+            # print("*** NEW ITER ***", self.id, self.numIters, flush=True)
+            self.sigma_array[-1].append(
+                []
+            )  # array for current iteration over current batch
+            self.prob_fp_array[-1].append(
+                []
+            )  # array for current iteration over current batch
+            self.prob_fn_array[-1].append(
+                []
+            )  # array for current iteration over current batch
+            self.dsigma_array[-1].append(
+                []
+            )  # array for current iteration over current batch
+            self.dprob_fp_array[-1].append(
+                []
+            )  # array for current iteration over current batch
+            self.dprob_fn_array[-1].append(
+                []
+            )  # array for current iteration over current batch
+            self.image_id_array[-1].append(
+                []
+            )  # array for current iteration over current batch
+            self.num_fp_array[-1].append(
+                []
+            )  # array for current iteration over current batch
+            self.num_fn_array[-1].append(
+                []
+            )  # array for current iteration over current batch
 
         # Use empirical counts of the number of false positives / false negatives (plus the beta priors)
         # to compute prob_fp and prob_fn
+
+        # How to interpret these lines?
+        # e.g. num_fp is initialized to the number of false positives that would
+        # be expected if prob_fp_beta annotations were provided by a worker with
+        # prob_fp
         num_fp = self.params.prob_fp * self.params.prob_fp_beta
         num_p = self.params.prob_fp_beta
         num_fn = self.params.prob_fn * self.params.prob_fn_beta
+        # num_tp is the number of potential boxes that could have been missed.
+        # It only gets used in the comutation of p_fn, so use prob_fn_beta, i.e.
+        # the number of imaginary annotations used to compute num_fn.
         num_tp = self.params.prob_fn_beta
-        for _idx,i in enumerate(self.images):
+        for _idx, i in enumerate(self.images):
+            self.num_fp_array[-1][-1].append(0)
+            self.num_fn_array[-1][-1].append(0)
+
+            if (
+                not len(
+                    self.images[i].z
+                )  # No annotations by this worker for this image
+                or i
+                not in self.images  # This worker did not annotate this image - may come into play for multiple batches?
+                or self.id
+                not in self.images[
+                    i
+                ].z  # This worker did not provide any annotations for this image (for this batch?)
+            ):
+                continue
+            # What is this weight?
+            # (Total number of annotators - this worker)/(Total number of annotators)
+            # Will be smaller if this worker is one amongst few, larger if one amongst many.
+            # If this worker disagrees/agrees with the consensus of a large number then
+            # the increment to their fx/tx (x = p or n) probability will be larger.
             w = (len(self.images[i].z) - 1) / float(len(self.images[i].z))
+            # The subset of annotations provided by this worker
             z = self.images[i].z[self.id]
+            # Initialize the list of counters for matches to this images "ground truth"
             matches = [0] * len(self.images[i].y.bboxes)
+            # COMPUTE FALSE POSITIVES
+            # Loop over boxes assigned by this worker - searching for matches.
             for b in z.bboxes:
                 if b.a is None:
+                    # No ground-truth matches for this box => false pos
                     num_fp += w
+                    self.num_fp_array[-1][-1][-1] += 1
                 else:  # elif b.dist(self.images[i].y.bboxes[b.a])<.5:
-                    matches[b.a] += 1
+                    # Matches a ground truth box.
+                    try:
+                        matches[b.a] += 1
+                    except IndexError as e:
+                        print("Caught {}".format(e))
+                # Increment the (weighted) number of assigned boxes
                 num_p += w
+            # COMPUTE FALSE NEGATIVES
+            # Loop over ground truth boxes for this image - looking for misses.
             for j in range(len(self.images[i].y.bboxes)):
                 if matches[j] == 0:
+                    # There were no matches to a ground truth box => false neg
                     num_fn += w
+                    self.num_fn_array[-1][-1][-1] += 1
+
+            # Note that this is the number of POSSIBLE true positives, not the
+            # number of TP due to this worker - sed for fn prob calc.
             num_tp += w * len(self.images[i].y.bboxes)
-            if new_iter:                                            ### VM-edit
-                self.prob_fp_array.append(float(num_fp) / num_p)    ### VM-edit
-                self.prob_fn_array.append(float(num_fn) / num_tp)   ### VM-edit
-            else:                                                   ### VM-edit
-                self.prob_fp_array[_idx-len(self.images)-1] = float(num_fp) / num_p    ### VM-edit
-                self.prob_fn_array[_idx-len(self.images)-1] = float(num_fn) / num_tp   ### VM-edit
-        if new_iter:                                            ### VM-edit
-            self.prob_fp_array.append(-99)                      ### VM-edit
-            self.prob_fn_array.append(-99)                      ### VM-edit
-        self.prob_fp = float(num_fp) / num_p  # probability a given worker box is a false positive
-        self.prob_fn = float(num_fn) / num_tp  # probability a worker will miss a particular box in the ground truth label
+
+            # Store computed probabilities after including each image
+            self.prob_fp_array[-1][-1].append(float(num_fp) / num_p)
+            self.prob_fn_array[-1][-1].append(float(num_fn) / num_tp)
+
+            # Store the delta in computed probability induced by current image
+            self.dprob_fp_array[-1][-1].append(
+                self.prob_fp_array[-1][-1][-1] - self.prob_fp_array[-1][-1][-2]
+                if len(self.prob_fp_array[-1][-1]) > 1
+                else 0
+            )
+            if suppressForFP(self.dprob_fp_array[-1][-1][-1]):
+                self.suppressed_images.add(i)
+
+            self.dprob_fn_array[-1][-1].append(
+                self.prob_fn_array[-1][-1][-1] - self.prob_fn_array[-1][-1][-2]
+                if len(self.prob_fn_array[-1][-1]) > 1
+                else 0
+            )
+            if suppressForFN(self.dprob_fn_array[-1][-1][-1]):
+                self.suppressed_images.add(i)
+
+            self.image_id_array[-1][-1].append(i)
+
+        # compute updated probabilities after processing entire image batch
+        self.prob_fp = (
+            float(num_fp) / num_p
+        )  # probability a given worker box is a false positive
+        self.prob_fn = (
+            float(num_fn) / num_tp
+        )  # probability a worker will miss a particular box in the ground truth label
 
         # Compute sample variance of annotated bounding boxes compared to matched true bounding boxes (plus scaled-inv-chi priors)
         # and use that to compute worker sigma
-        S = self.params.prior_sigma_v0 * (self.params.prior_sigma**2)
+
+        # S is the expected VARIANCE if prior_sigma_v0 imaginary workers with
+        # click accuracy parameterised by prior_sigma had provided annotations.
+        S = self.params.prior_sigma_v0 * (self.params.prior_sigma ** 2)
         num = self.params.prior_sigma_v0  # + 2
-        for _idx,i in enumerate(self.images):
+        for _idx, i in enumerate(self.images):
+            # Interpret these checks as for the fp and fn prob computations.
+            if (
+                not len(self.images[i].z)
+                or i not in self.images
+                or self.id not in self.images[i].z
+            ):
+                continue
+            # The subset of annotations provided by this worker
             z = self.images[i].z[self.id]
             for b in z.bboxes:
-                if not b.a is None:
-                    S += (b.dist2(self.images[i].y.bboxes[b.a]) + self.images[i].y.bboxes[b.a].est_var)  # *b.w
-                    num += 1  # b.w
-            if new_iter:                                            ### VM-edit
-                self.sigma_array.append(math.sqrt(S / num))         ### VM-edit
-            else:                                                   ### VM-edit
-                self.sigma_array[_idx-len(self.images)-1] = math.sqrt(S / num)    ### VM-edit
-        if new_iter: self.sigma_array.append(-99)                   ### VM-edit
-        self.sigma = math.sqrt(S / num)
-        self.skill = [self.prob_fp, self.sigma, self.prob_fn]
+                # Only consider worker boxes that match a ground truth box for
+                # this image.
+                if b.a is not None:
+                    try:
+                        S += (
+                            # squared "distance" between the worker box and its
+                            # matched ground truth box
+                            b.dist2(self.images[i].y.bboxes[b.a])
+                            #
+                            + self.images[i].y.bboxes[b.a].est_var
+                        )  # *b.w
+                        num += 1  # b.w
+                    except IndexError as e:
+                        print("Caught {}".format(e))
 
-        ### Debug purposes -- VM-edit ###
-        # if self.id=='1785497':
-        #     print("\n{:s}\n".format("".join(["-"]*20)))
-        #     print("n_images {:}".format(len(self.images)))
-        #     print("sigma {:}".format(self.sigma_array))
-        #     print("prob_fp {:}".format(self.prob_fp_array))
-        #     print("prob_fn {:}".format(self.prob_fn_array))
-        #     print("\n{:s}\n".format("".join(["-"]*20)))
+            # Store computed sigma after including each image
+            self.sigma_array[-1][-1].append(S / num)
+
+            # Store computed delta-sigma after including each image
+            self.dsigma_array[-1][-1].append(
+                self.sigma_array[-1][-1][-1] - self.sigma_array[-1][-1][-2]
+                if len(self.sigma_array[-1][-1]) > 1
+                else 0
+            )
+            if suppressForSigma(self.dsigma_array[-1][-1][-1]):
+                self.suppressed_images.add(i)
+
+        self.sigma = math.sqrt(S / num)
+
+        # if this processing of this batch has disproportionately inflated this
+        # worker's FP or FN probabilities or increased their variance, then
+        # suppress their annotations for this batch.
+        if len(self.suppressed_images) > 0:
+            print("Suppresssing worker {}".format(self.id))
+            self.suppressed = True
+            # Restore skill before any batch iterations
+            self.skill = self.savedSkill
+            return True, self.id
+        else:
+            # only update skill if catastrophic failure is npt indicated.
+            self.skill = [self.prob_fp, self.sigma, self.prob_fn]
+            return False, self.id
 
 
 class CrowdLabelBBox(CrowdLabel):
     def __init__(self, image, worker):
         super(CrowdLabelBBox, self).__init__(image, worker)
         self.bboxes = None  # Array of SingleBBox'es
-        self.encode_exclude['bboxes'] = True
-        self.gtype = 'bboxes'
+        self.encode_exclude["bboxes"] = True
+        self.gtype = "bboxes"
 
     def compute_log_likelihood(self):
         y = self.image.y
@@ -729,15 +1126,29 @@ class CrowdLabelBBox(CrowdLabel):
         matches = [0] * len(y.bboxes)
         for b in self.bboxes:
             if b.a is not None:
-                matches[b.a] += 1
-                ll += -.5 * b.dist2(y.bboxes[b.a]) / (b.sigma**2) - .5 * math.log(2 * math.pi) - math.log(b.sigma) + math.log(1 - self.worker.prob_fp)  # Gaussian
+                try:
+                    matches[b.a] += 1
+                    ll += (
+                        -0.5 * b.dist2(y.bboxes[b.a]) / (b.sigma ** 2)
+                        - 0.5 * math.log(2 * math.pi)
+                        - math.log(b.sigma)
+                        + math.log(1 - self.worker.prob_fp)
+                    )  # Gaussian
+                except IndexError as e:
+                    print("Caught {}".format(e))
             else:
-                ll += math.log(self.worker.prob_fp) - math.log(self.image.num_possible_bbox_locs)
+                ll += math.log(self.worker.prob_fp) - math.log(
+                    self.image.num_possible_bbox_locs
+                )
         for i in range(len(y.bboxes)):
-            ll += math.log(self.worker.prob_fn) if matches[i] == 0 else math.log(1 - self.worker.prob_fn)
+            ll += (
+                math.log(self.worker.prob_fn)
+                if matches[i] == 0
+                else math.log(1 - self.worker.prob_fn)
+            )
         return ll
 
-    def match_to(self, y, match_by='distance', thresh=None):
+    def match_to(self, y, match_by="distance", thresh=None):
         """
         """
         thresh = CrowdDatasetBBox.OVERLAP_THRESH if thresh is None else thresh
@@ -750,7 +1161,7 @@ class CrowdLabelBBox(CrowdLabel):
                 if j != k:
                     cityDisallowedCityNeighbors[j][k] = -1
 
-        if match_by == 'distance':
+        if match_by == "distance":
             for i in range(len(y.bboxes)):
                 for j in range(len(self.bboxes)):
                     d2 = y.bboxes[i].dist2(self.bboxes[j])
@@ -758,19 +1169,34 @@ class CrowdLabelBBox(CrowdLabel):
                         costs.append((d2, i, j))
             for j in range(len(self.bboxes)):
                 costs.append((1, -1, j))  # dummy node
-        elif match_by == 'prob':
+        elif match_by == "prob":
             for i in range(len(y.bboxes)):
                 for j in range(len(self.bboxes)):
                     d2 = y.bboxes[i].dist2(self.bboxes[j])
                     # NOTE: when will this not be the case
                     if d2 < 1:
-                        costs.append((match_cost(self.bboxes[j], y.bboxes[i], self, d2=d2, gt_fixed=True), i, j))
+                        costs.append(
+                            (
+                                match_cost(
+                                    self.bboxes[j],
+                                    y.bboxes[i],
+                                    self,
+                                    d2=d2,
+                                    gt_fixed=True,
+                                ),
+                                i,
+                                j,
+                            )
+                        )
             for j in range(len(self.bboxes)):
                 costs.append((dummy_match_cost(self.bboxes[j], thresh), -1, j))
         else:
             assert False, "match_to(..., match_by=" + match_by + ") not supported"
 
-        [facilities, total_cost] = FacilityLocation(cityFacilityCosts=costs, cityDisallowedCityNeighbors=cityDisallowedCityNeighbors).solve(openFacilityCost=0)
+        [facilities, total_cost] = FacilityLocation(
+            cityFacilityCosts=costs,
+            cityDisallowedCityNeighbors=cityDisallowedCityNeighbors,
+        ).solve(openFacilityCost=0)
         for f in facilities:
             for c in facilities[f]:
                 self.bboxes[c].a = f if f >= 0 else None
@@ -781,23 +1207,44 @@ class CrowdLabelBBox(CrowdLabel):
     def colorize(self):
         matches = {}
         for b in self.bboxes:
-            if not b.a is None:
-                if b.a in matches:
-                    print('COLORIZE: Multiple boxes matched to the same ground truth, image=' + str(self.image.id) + ", worker=" + str(self.worker.id if self.worker else 'null') + ", a=" + str(b.a) + " " + str(self.encode()))
-                    b.a = None
-                else:
-                    matches[b.a] = b
+            if b.a is not None:
+                try:
+                    if b.a in matches:
+                        # This situation can occur if a worker places two boxes
+                        # very close to each other since the aggregator insists
+                        # that they cannot correspond to the same real object.
+                        # However, a bug in the zooniverse mobile interface can
+                        # sometimes lead to double counting of taps.
+                        print(
+                            "COLORIZE: Multiple boxes matched to the same ground truth, image="
+                            + str(self.image.id)
+                            + ", worker="
+                            + str(self.worker.id if self.worker else "null")
+                            + ", a="
+                            + str(b.a)
+                            # + " "
+                            # + str(self.encode())
+                        )
+                        b.a = None
+                    else:
+                        matches[b.a] = b
+                except IndexError as e:
+                    print("Caught {}".format(e))
 
         for b in self.bboxes:
-            if not self.worker is None:
-                b.outline_color = FALSE_POSITIVE_COLOR if b.a is None else TRUE_POSITIVE_COLOR
+            if self.worker is not None:
+                b.outline_color = (
+                    FALSE_POSITIVE_COLOR if b.a is None else TRUE_POSITIVE_COLOR
+                )
                 b.fill_color = None
-                b.alpha = 1 - b.prob_fp if (not b.prob_fp is None) else 1
-            elif self.image and hasattr(self.image, 'y') and self == self.image.y:
-                b.outline_color = FALSE_POSITIVE_COLOR if b.a is None else TRUE_POSITIVE_COLOR
+                b.alpha = 1 - b.prob_fp if b.prob_fp is not None else 1
+            elif self.image and hasattr(self.image, "y") and self == self.image.y:
+                b.outline_color = (
+                    FALSE_POSITIVE_COLOR if b.a is None else TRUE_POSITIVE_COLOR
+                )
                 b.fill_color = FINISHED_COLOR if self.image.finished else None
                 b.alpha = FILL_ALPHA if self.image.finished else 1
-            elif self.image and hasattr(self.image, 'y_gt') and self == self.image.y_gt:
+            elif self.image and hasattr(self.image, "y_gt") and self == self.image.y_gt:
                 b.outline_color = GT_COLOR
                 b.fill_color = None
                 b.alpha = 1
@@ -814,12 +1261,17 @@ class CrowdLabelBBox(CrowdLabel):
         # BUG: should this be above `self.match_to(y)`?
         old_matches = [b.a for b in self.bboxes]
         for b in self.bboxes:
-            # Matched and the IoU is greater than 0.5, so this is a true positive
-            if (b.a is not None) and b.dist(y.bboxes[b.a]) <= thresh:
-                matches[b.a] += 1
-            # The bbox is big enough and it didn't match, so this is a false positive
-            elif (b.x2 - b.x) > MIN_WIDTH and (b.a is None or y.bboxes[b.a].x2 - y.bboxes[b.a].x > MIN_WIDTH):
-                loss += fp_loss
+            try:
+                # Matched and the IoU is greater than 0.5, so this is a true positive
+                if (b.a is not None) and b.dist(y.bboxes[b.a]) <= thresh:
+                    matches[b.a] += 1
+                # The bbox is big enough and it didn't match, so this is a false positive
+                elif (b.x2 - b.x) > MIN_WIDTH and (
+                    b.a is None or y.bboxes[b.a].x2 - y.bboxes[b.a].x > MIN_WIDTH
+                ):
+                    loss += fp_loss
+            except IndexError as e:
+                print("Cauight {}".format(e))
         for i in range(len(y.bboxes)):
             # Nothing matched the given bbox, so this is a false negative
             if matches[i] == 0 and y.bboxes[i].x2 - y.bboxes[i].x > MIN_WIDTH:
@@ -835,15 +1287,25 @@ class CrowdLabelBBox(CrowdLabel):
             return
         self.prob_fn = self.worker.prob_fn
         for b in self.bboxes:
-            if not self.worker.is_computer_vision or self.image.params.naive_computer_vision:
+            if (
+                not self.worker.is_computer_vision
+                or self.image.params.naive_computer_vision
+            ):
                 # naive algorithm models CV as a worker, the better algorithm uses its detection confidence to estimate prob_fp
                 b.prob_fp = self.worker.prob_fp
             if (not b.a is None) and self.image.params.learn_image_params:
-                d2 = b.dist2(self.image.y.bboxes[b.a]) # IoU squared
-                pi = math.exp(-.5 * d2 / (self.image.sigmas[b.a]**2)) / (math.sqrt(2 * math.pi) * self.image.sigmas[b.a]) # gaussian image difficulty model
-                pw = math.exp(-.5 * d2 / (self.worker.sigma**2)) / (math.sqrt(2 * math.pi) * self.worker.sigma) # gaussian worker variance model
+                d2 = b.dist2(self.image.y.bboxes[b.a])  # IoU squared
+                pi = math.exp(-0.5 * d2 / (self.image.sigmas[b.a] ** 2)) / (
+                    math.sqrt(2 * math.pi) * self.image.sigmas[b.a]
+                )  # gaussian image difficulty model
+                pw = math.exp(-0.5 * d2 / (self.worker.sigma ** 2)) / (
+                    math.sqrt(2 * math.pi) * self.worker.sigma
+                )  # gaussian worker variance model
                 b.w = pw / (pi + pw)
-                b.sigma = math.sqrt((1 - b.w) * (self.image.sigmas[b.a]**2) + b.w * (self.worker.sigma**2))
+                b.sigma = math.sqrt(
+                    (1 - b.w) * (self.image.sigmas[b.a] ** 2)
+                    + b.w * (self.worker.sigma ** 2)
+                )
             else:
                 b.sigma, b.w = self.worker.sigma, 1
         return 0
@@ -851,38 +1313,41 @@ class CrowdLabelBBox(CrowdLabel):
     def parse(self, data):
         super(CrowdLabelBBox, self).parse(data)
         self.bboxes = []
-        for i in range(len(data['bboxes'])):
+        for i in range(len(data["bboxes"])):
             b = SingleBBox()
-            for k in data['bboxes'][i]:
-                setattr(b, k, data['bboxes'][i][k])
+            for k in data["bboxes"][i]:
+                setattr(b, k, data["bboxes"][i][k])
             self.image_width, self.image_height = b.image_width, b.image_height
             self.bboxes.append(b)
 
     def encode(self):
         enc = super(CrowdLabelBBox, self).encode()
-        enc['bboxes'] = []
+        enc["bboxes"] = []
         for i in range(len(self.bboxes)):
             b = {}
             for k in self.bboxes[i].__dict__:
                 b[k] = self.bboxes[i].__dict__[k]
-            enc['bboxes'].append(b)
+            enc["bboxes"].append(b)
         return enc
 
 
 class SingleBBox:
-    def __init__(self, x=None, y=None, x2=None, y2=None, prob_fp=None):
-       # bounding box in image coordinates
+    def __init__(self, x=None, y=None, x2=None, y2=None, prob_fp=None, tool=None):
+        # bounding box in image coordinates
         self.x = x
         self.y = y
         self.x2 = x2
         self.y2 = y2
         self.sigma = None  # standard deviation in drawing the box boundaries
-        self.a = None  # appicable for worker annotations, index into y.bboxes that this box was matched to
+        self.a = (
+            None
+        )  # appicable for worker annotations, index into y.bboxes that this box was matched to
         self.prob_fp = prob_fp
-        self.w = .5
-        self.gtype = 'bbox'
+        self.w = 0.5
+        self.gtype = "bbox"
+        self.tool = tool
 
-    def dist(self, bbox, verbose = False):
+    def dist(self, bbox, verbose=False):
         """ 1 - IoU
         Max dist = 1
         Min dist = 0
@@ -895,16 +1360,18 @@ class SingleBBox:
         iy = max(0, min(bbox.y2, self.y2) - max(bbox.y, self.y))
 
         if verbose:
-            print('ux', ux, 'uy', uy, 'ix', ix, 'iy', iy)
+            print("ux", ux, "uy", uy, "ix", ix, "iy", iy)
         # 1 - IoU
         return 1.0 - ix * iy / max(1e-8, float(ux * uy))
 
     def dist2(self, bbox):
-        return self.dist(bbox)**2
+        return self.dist(bbox) ** 2
 
     def loss(self, bbox, thresh=None):
         thresh = CrowdDatasetBBox.OVERLAP_THRESH if thresh is None else thresh
         return float(self.dist(bbox) < thresh)
 
     def __repr__(self):
-        return 'BBox: x1:{}, x2:{}, y1:{}, y2:{}'.format(self.x, self.x2, self.y, self.y2)
+        return "BBox: x1:{}, x2:{}, y1:{}, y2:{}".format(
+            self.x, self.x2, self.y, self.y2
+        )
