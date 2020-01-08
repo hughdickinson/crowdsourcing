@@ -1252,10 +1252,13 @@ class CrowdLabelBBox(CrowdLabel):
                 b.fill_color = None
                 b.alpha = 1
 
-    def loss(self, y, fp_loss=1, fn_loss=1, thresh=None):
-        """ Compute the loss between this annotation and y
+    def loss(self, y, **kwargs):
+        """ Compute the loss between this annotation and 0y
         """
+        thresh = kwargs.get("thresh", None)
         thresh = CrowdDatasetBBox.OVERLAP_THRESH if thresh is None else thresh
+        fp_loss = kwargs.get("fp_loss", 1)
+        fn_loss = kwargs.get("fn_loss", 1)
 
         self.match_to(y)
         y.colorize()
