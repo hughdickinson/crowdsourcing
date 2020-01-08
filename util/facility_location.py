@@ -457,9 +457,7 @@ class priority_dict(dict):
         while self:
             yield self.pop_smallest()
 
-
-
-from numpy.random import np
+import numpy as np
 from numpy import concatenate
 import matplotlib.pyplot as plt
 import math

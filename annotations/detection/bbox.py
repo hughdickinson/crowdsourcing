@@ -749,13 +749,16 @@ class CrowdImageBBox(CrowdImage):
                             print("Caught {}".format(e))
         self.sigmas = [math.sqrt(S[i] / num[i]) for i in range(len(self.y.bboxes))]
 
-    def check_finished(self, set_finished=True, thresh=None, loss_fn=1, loss_fp=1):
+    def check_finished(self, set_finished=True, **kwargs):
         """ The risk is a sum of 3 terms:
           1. The expected number of false positives
           2. The expected number of inaccurate true positives
           3. The expected number of false negatives
         """
-        thresh = CrowdDatasetBBox.OVERLAP_THRESH if thresh is None else thresh
+        thresh = kwargs.get("thresh", None)
+        thresh = thresh if thresh is not None else CrowdDatasetBBox.OVERLAP_THRESH
+        loss_fn = kwargs.get("loss_fn", 1)
+        loss_fp = kwargs.get("loss_fp", 1)
 
         if self.finished:
             return True

@@ -493,13 +493,13 @@ class CrowdDataset(object):
 
             self.workers[self.cv_worker.id] = self.cv_worker
 
-    def check_finished_annotations(self, set_finished=True):
+    def check_finished_annotations(self, set_finished=True, **kwargs):
         """Return a dict mapping image id to a bool indicating whether the
         image is finished.
         """
         finished = {}
         for image_id, image in self.images.items():
-            finished[image_id] = image.check_finished(set_finished=set_finished)
+            finished[image_id] = image.check_finished(set_finished=set_finished, **kwargs)
         return finished
 
     def num_unfinished(self, max_annos=float("Inf"), full_dataset=None):
