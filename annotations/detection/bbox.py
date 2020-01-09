@@ -845,7 +845,7 @@ class CrowdWorkerBBox(CrowdWorker):
 
         self.encode_exclude["suppressed_images"] = True
 
-        print("*** NEW WORKER ***", self.id)
+        # print("*** NEW WORKER ***", self.id)
 
         # worker skill parameters
         self.sigma = (
@@ -1277,7 +1277,7 @@ class CrowdLabelBBox(CrowdLabel):
                 ):
                     loss += fp_loss
             except IndexError as e:
-                print("Cauight {}".format(e))
+                print("Caught {}".format(e))
         for i in range(len(y.bboxes)):
             # Nothing matched the given bbox, so this is a false negative
             if matches[i] == 0 and y.bboxes[i].x2 - y.bboxes[i].x > MIN_WIDTH:
