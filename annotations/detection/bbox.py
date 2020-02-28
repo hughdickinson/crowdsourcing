@@ -98,6 +98,7 @@ class CrowdDatasetBBox(CrowdDataset):
         ]
 
         self.suppressWorkers = False
+        self.saveAllSkillData = False
 
         # MTurk Data
         name = self.name if self.name and len(self.name) > 0 else "objects"
@@ -858,6 +859,11 @@ class CrowdWorkerBBox(CrowdWorker):
             None
         )  # probability that a ground truth box will be missed by this worker
         self.finished = False
+
+        self.skill = None
+        self.suppressed_images = None
+
+    def initSkillArrays(self):
         self.sigma_array = []  # all batches
         self.prob_fp_array = []  # all batches
         self.prob_fn_array = []  # all batches
@@ -868,10 +874,22 @@ class CrowdWorkerBBox(CrowdWorker):
         self.num_fp_array = []  # all batches
         self.num_fn_array = []  # all batches
 
-        self.skill = None
-        self.suppressed_images = None
+    def truncateBatchSkillArrays(self):
+        self.sigma_array[-1] = []
+        self.prob_fp_array[-1] = []
+        self.prob_fn_array[-1] = []
+        self.dsigma_array[-1] = []
+        self.dprob_fp_array[-1] = []
+        self.dprob_fn_array[-1] = []
+        self.image_id_array[-1] = []
+        self.num_fp_array[-1] = []
+        self.num_fn_array[-1] = []
 
     def nextBatch(self):
+        if not self.params.saveAllData:
+            # Only retain the last batch of skill results
+            self.initSkillArrays()
+
         self.sigma_array.append([])
         self.prob_fp_array.append([])
         self.prob_fn_array.append([])
@@ -926,6 +944,9 @@ class CrowdWorkerBBox(CrowdWorker):
             return False, self.id
 
         if new_iter:  ### VM-edit
+            if not self.params.saveAllData:
+                # Only retain skill data for the last iteration of each batch
+                self.truncateBatchSkillArrays()
             self.numIters += 1
             # print("*** NEW ITER ***", self.id, self.numIters, flush=True)
             self.sigma_array[-1].append(
