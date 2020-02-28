@@ -886,7 +886,7 @@ class CrowdWorkerBBox(CrowdWorker):
         self.num_fn_array[-1] = []
 
     def nextBatch(self):
-        if not self.params.saveAllData:
+        if not self.params.saveAllSkillData:
             # Only retain the last batch of skill results
             self.initSkillArrays()
 
@@ -944,7 +944,7 @@ class CrowdWorkerBBox(CrowdWorker):
             return False, self.id
 
         if new_iter:  ### VM-edit
-            if not self.params.saveAllData:
+            if not self.params.saveAllSkillData:
                 # Only retain skill data for the last iteration of each batch
                 self.truncateBatchSkillArrays()
             self.numIters += 1
